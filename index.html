@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TMK KPIs</title>
+  <style>
+    body{font-family:system-ui,Arial;max-width:720px;margin:24px auto;padding:0 12px}
+    .card{border:1px solid #ddd;border-radius:12px;padding:14px;margin:12px 0}
+    input,button,select{width:100%;padding:10px;border-radius:10px;border:1px solid #ccc;margin:6px 0}
+    button{cursor:pointer}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .kpi{display:flex;justify-content:space-between;padding:10px;border-radius:10px;background:#f7f7f7;margin:8px 0}
+    .muted{color:#666;font-size:12px}
+    .hide{display:none}
+  </style>
+</head>
+<body>
+  <h2>TMK KPIs</h2>
+  <p class="muted">Login por operador (Supabase). Si RLS está bien, solo verás tus datos.</p>
+
+  <div id="loginCard" class="card">
+    <h3>Iniciar sesión</h3>
+    <input id="email" placeholder="Email" autocomplete="username" />
+    <input id="password" placeholder="Contraseña" type="password" autocomplete="current-password" />
+    <button id="btnLogin">Entrar</button>
+    <div id="loginMsg" class="muted"></div>
+  </div>
+
+  <div id="appCard" class="card hide">
+    <div class="row">
+      <div>
+        <h3>Mis KPIs</h3>
+        <div class="muted" id="userInfo"></div>
+      </div>
+      <div>
+        <button id="btnLogout">Cerrar sesión</button>
+      </div>
+    </div>
+
+    <label>Fecha</label>
+    <input id="kpiDate" type="date" />
+
+    <label>Campaña</label>
+    <select id="campaign"></select>
+
+    <button id="btnLoad">Cargar KPIs</button>
+
+    <div id="kpis"></div>
+    <div class="muted" id="status"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Tus credenciales públicas
+    const SUPABASE_URL = "https://sjxqhlhvsdxgahpndxcc.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_IvVkMu9brJvX19qfqoBlxA_3cp2Qq85";
+
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    const $ = (id) => document.getElementById(id);
+    const loginCard = $("loginCard");
+    const appCard = $("appCard");
+    const loginMsg = $("loginMsg");
+    const status = $("status");
+    const kpisDiv = $("kpis");
+    const campaignSel = $("campaign");
+    const kpiDate = $("kpiDate");
+    const userInfo = $("userInfo");
+
+    // fecha por defecto: hoy
+    const today = new Date();
+    kpiDate.value = today.toISOString().slice(0,10);
+
+    function fmt(n){
+      if (n === null || n === undefined) return "—";
+      if (typeof n === "number") {
+        if (n > 0 && n <= 1) return (n*100).toFixed(2) + "%";
+        return n.toLocaleString("es-GT");
+      }
+      return n;
+    }
+
+    function showKpis(row){
+      const items = [
+        ["Registros", row.registros],
+        ["Ventas", row.ventas],
+        ["Contactabilidad", row.contactabilidad],
+        ["Efectividad", row.efectividad],
+        ["Rendimiento", row.rendimiento],
+      ];
+      kpisDiv.innerHTML = items.map(([k,v]) =>
+        `<div class="kpi"><strong>${k}</strong><span>${fmt(v)}</span></div>`
+      ).join("");
+    }
+
+    async function loadCampaigns(){
+      status.textContent = "Cargando campañas...";
+      const { data, error } = await sb
+        .from("kpi_daily")
+        .select("campaign")
+        .eq("kpi_date", kpiDate.value);
+
+      if (error) { status.textContent = "Error campañas: " + error.message; return; }
+
+      const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
+      campaignSel.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
+      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para esa fecha (o no tienes permiso por RLS).";
+    }
+
+    async function loadKpis(){
+      kpisDiv.innerHTML = "";
+      status.textContent = "Buscando KPIs...";
+      const date = kpiDate.value;
+      const camp = campaignSel.value;
+
+      const { data, error } = await sb
+        .from("kpi_daily")
+        .select("*")
+        .eq("kpi_date", date)
+        .eq("campaign", camp)
+        .limit(1);
+
+      if (error) { status.textContent = "Error KPIs: " + error.message; return; }
+      if (!data || data.length === 0){
+        status.textContent = "No hay KPIs para esa fecha/campaña (o RLS no permite verlos).";
+        return;
+      }
+      showKpis(data[0]);
+      status.textContent = "OK.";
+    }
+
+    async function refreshAuthUI(){
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user){
+        loginCard.classList.add("hide");
+        appCard.classList.remove("hide");
+        userInfo.textContent = "Sesión: " + session.user.email;
+        await loadCampaigns();
+      } else {
+        loginCard.classList.remove("hide");
+        appCard.classList.add("hide");
+        loginMsg.textContent = "";
+      }
+    }
+
+    $("btnLogin").addEventListener("click", async () => {
+      loginMsg.textContent = "Ingresando...";
+      const email = $("email").value.trim();
+      const password = $("password").value;
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error){
+        loginMsg.textContent = "Error: " + error.message;
+        return;
+      }
+      await refreshAuthUI();
+    });
+
+    $("btnLogout").addEventListener("click", async () => {
+      await sb.auth.signOut();
+      await refreshAuthUI();
+    });
+
+    $("btnLoad").addEventListener("click", loadKpis);
+    kpiDate.addEventListener("change", loadCampaigns);
+
+    refreshAuthUI();
+  </script>
+</body>
+</html>
