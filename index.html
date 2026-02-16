@@ -41,6 +41,12 @@
     <label>Fecha</label>
     <input id="kpiDate" type="date" />
 
+<label>Periodo</label>
+<select id="period">
+  <option value="daily">Diario</option>
+  <option value="monthly">Mes (acumulado)</option>
+</select>
+    
     <label>Campaña</label>
     <select id="campaign"></select>
 
@@ -94,38 +100,66 @@
       ).join("");
     }
 
+    const periodSel = $("period");
+
+function monthStart(dateStr){
+  // dateStr: "2026-02-10" -> "2026-02-01"
+  return dateStr.slice(0,7) + "-01";
+}
+
+function avgOrNull(arr){
+  if (!arr.length) return null;
+  return arr.reduce((a,b)=>a+b,0) / arr.length;
+}
+
+
+    
     async function loadCampaigns(){
-      status.textContent = "Cargando campañas...";
-      const { data, error } = await sb
-        .from("kpi_daily")
-        .select("campaign")
-        .eq("kpi_date", kpiDate.value);
+  status.textContent = "Cargando campañas...";
+  const period = periodSel.value;
+  const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+  const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+  const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
 
-      if (error) { status.textContent = "Error campañas: " + error.message; return; }
+  const { data, error } = await sb
+    .from(table)
+    .select("campaign")
+    .eq(dateField, dateVal);
 
-      const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
-      campaignSel.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
-      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para esa fecha (o no tienes permiso por RLS).";
-    }
+  if (error) { status.textContent = "Error campañas: " + error.message; return; }
+
+  const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
+  campaignSel.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
+  status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro (o RLS no permite verlas).";
+}
 
     async function loadKpis(){
-      kpisDiv.innerHTML = "";
-      status.textContent = "Buscando KPIs...";
-      const date = kpiDate.value;
-      const camp = campaignSel.value;
+  kpisDiv.innerHTML = "";
+  status.textContent = "Buscando KPIs...";
 
-      const { data, error } = await sb
-        .from("kpi_daily")
-        .select("*")
-        .eq("kpi_date", date)
-        .eq("campaign", camp)
-        .limit(1);
+  const period = periodSel.value;
+  const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+  const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+  const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+  const camp = campaignSel.value;
 
-      if (error) { status.textContent = "Error KPIs: " + error.message; return; }
-      if (!data || data.length === 0){
-        status.textContent = "No hay KPIs para esa fecha/campaña (o RLS no permite verlos).";
-        return;
-      }
+  const { data, error } = await sb
+    .from(table)
+    .select("*")
+    .eq(dateField, dateVal)
+    .eq("campaign", camp)
+    .limit(1);
+
+  if (error) { status.textContent = "Error KPIs: " + error.message; return; }
+  if (!data || data.length === 0){
+    status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
+    return;
+  }
+
+  showKpis(data[0]);
+  status.textContent = "OK.";
+}
+
       showKpis(data[0]);
       status.textContent = "OK.";
     }
@@ -164,8 +198,9 @@
 
     $("btnLoad").addEventListener("click", loadKpis);
     kpiDate.addEventListener("change", loadCampaigns);
-
+    periodSel.addEventListener("change", loadCampaigns);
     refreshAuthUI();
   </script>
 </body>
 </html>
+
