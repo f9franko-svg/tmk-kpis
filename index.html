@@ -160,11 +160,7 @@ function avgOrNull(arr){
   status.textContent = "OK.";
 }
 
-      showKpis(data[0]);
-      status.textContent = "OK.";
-    }
-
-    async function refreshAuthUI(){
+       async function refreshAuthUI(){
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user){
         loginCard.classList.add("hide");
@@ -203,4 +199,5 @@ function avgOrNull(arr){
   </script>
 </body>
 </html>
+
 
