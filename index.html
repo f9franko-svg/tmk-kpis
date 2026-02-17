@@ -5,14 +5,91 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TMK KPIs</title>
   <style>
-    body{font-family:system-ui,Arial;max-width:720px;margin:24px auto;padding:0 12px}
-    .card{border:1px solid #ddd;border-radius:12px;padding:14px;margin:12px 0}
-    input,button,select{width:100%;padding:10px;border-radius:10px;border:1px solid #ccc;margin:6px 0}
-    button{cursor:pointer}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .kpi{display:flex;justify-content:space-between;padding:10px;border-radius:10px;background:#f7f7f7;margin:8px 0}
-    .muted{color:#666;font-size:12px}
-    .hide{display:none}
+ :root{
+    --bg:#0b1220;
+    --card:#0f1a30;
+    --card2:#111f3a;
+    --text:#e9eefc;
+    --muted:#a9b4d0;
+    --border:rgba(255,255,255,.10);
+    --good:#22c55e;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+    --accent:#60a5fa;
+  }
+  body{
+    font-family:system-ui,Arial;
+    max-width:780px;margin:28px auto;padding:0 14px;
+    background:linear-gradient(180deg,#070b14 0%, #0b1220 60%, #070b14 100%);
+    color:var(--text);
+  }
+  h2{letter-spacing:.3px;margin:6px 0 14px 0}
+  .muted{color:var(--muted);font-size:12px}
+
+  .card{
+    background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:16px;
+    margin:14px 0;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  input,button,select{
+    width:100%;
+    padding:11px 12px;
+    border-radius:12px;
+    border:1px solid var(--border);
+    margin:7px 0;
+    background:rgba(255,255,255,.04);
+    color:var(--text);
+    outline:none;
+  }
+  input::placeholder{color:rgba(233,238,252,.45)}
+  button{
+    cursor:pointer;
+    background:linear-gradient(90deg, rgba(96,165,250,.9) 0%, rgba(34,197,94,.75) 100%);
+    border:none;
+    font-weight:700;
+  }
+  button:hover{filter:brightness(1.05)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
+
+  .topbar{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:10px
+  }
+  .titleBlock h3{margin:0 0 4px 0}
+  .pill{
+    display:inline-flex;gap:8px;align-items:center;
+    padding:6px 10px;border-radius:999px;
+    border:1px solid var(--border);
+    background:rgba(255,255,255,.04);
+    font-size:12px;color:var(--muted)
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+  .hide{display:none}
+
+  .kpisGrid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-top:10px;
+  }
+  .kpi{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 12px;
+    border-radius:14px;
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--border);
+  }
+  .kpi strong{font-size:14px}
+  .kpi span{font-variant-numeric:tabular-nums}
+  .badge{
+    padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;
+    border:1px solid var(--border);
+  }
+  .good{color:var(--good)}
+  .warn{color:var(--warn)}
+  .bad{color:var(--bad)}
   </style>
 </head>
 <body>
@@ -199,5 +276,6 @@ function avgOrNull(arr){
   </script>
 </body>
 </html>
+
 
 
