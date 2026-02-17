@@ -164,18 +164,44 @@
       return n;
     }
 
-    function showKpis(row){
-      const items = [
-        ["Registros", row.registros],
-        ["Ventas", row.ventas],
-        ["Contactabilidad", row.contactabilidad],
-        ["Efectividad", row.efectividad],
-        ["Rendimiento", row.rendimiento],
-      ];
-      kpisDiv.innerHTML = items.map(([k,v]) =>
-        `<div class="kpi"><strong>${k}</strong><span>${fmt(v)}</span></div>`
-      ).join("");
-    }
+    function levelByPct(p, good, warn){
+  // p viene como 0..1
+  if (p >= good) return "good";
+  if (p >= warn) return "warn";
+  return "bad";
+}
+
+function showKpis(row){
+  const reg = row.registros ?? 0;
+  const ven = row.ventas ?? 0;
+
+  const contact = Number(row.contactabilidad ?? 0);
+  const efect  = Number(row.efectividad ?? 0);
+  const rend   = Number(row.rendimiento ?? 0);
+
+  const clsContact = levelByPct(contact, 0.35, 0.25);  // ajusta umbrales si quieres
+  const clsEfect   = levelByPct(efect,  0.35, 0.20);
+  const clsRend    = levelByPct(rend,   0.20, 0.10);
+
+  const items = [
+    ["Registros", reg, "neutral"],
+    ["Ventas", ven, "neutral"],
+    ["Contactabilidad", fmt(contact), clsContact],
+    ["Efectividad", fmt(efect), clsEfect],
+    ["Rendimiento", fmt(rend), clsRend],
+  ];
+
+  kpisDiv.innerHTML = `
+    <div class="kpisGrid">
+      ${items.map(([k,v,cls]) => `
+        <div class="kpi">
+          <strong>${k}</strong>
+          <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
 
     const periodSel = $("period");
 
@@ -276,6 +302,7 @@ function avgOrNull(arr){
   </script>
 </body>
 </html>
+
 
 
 
