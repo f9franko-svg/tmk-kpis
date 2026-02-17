@@ -283,7 +283,12 @@ async function loadMyProfile(){
       if (session?.user){
         loginCard.classList.add("hide");
         appCard.classList.remove("hide");
-        userInfo.textContent = "Sesión: " + session.user.email;
+        const prof = await loadMyProfile();
+if (prof?.operator_name){
+  userInfo.textContent = `Sesión: ${prof.operator_name} (${session.user.email})`;
+} else {
+  userInfo.textContent = "Sesión: " + session.user.email;
+}
         await loadCampaigns();
       } else {
         loginCard.classList.remove("hide");
@@ -317,6 +322,7 @@ async function loadMyProfile(){
   </script>
 </body>
 </html>
+
 
 
 
