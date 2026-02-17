@@ -262,7 +262,22 @@ function avgOrNull(arr){
   showKpis(data[0]);
   status.textContent = "OK.";
 }
+async function loadMyProfile(){
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session?.user) return null;
 
+  const { data, error } = await sb
+    .from("operators")
+    .select("operator_name, operator_code, role")
+    .eq("auth_user_id", session.user.id)
+    .limit(1);
+
+  if (error) {
+    console.log("Error profile:", error.message);
+    return null;
+  }
+  return (data && data.length) ? data[0] : null;
+}
        async function refreshAuthUI(){
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user){
@@ -302,6 +317,7 @@ function avgOrNull(arr){
   </script>
 </body>
 </html>
+
 
 
 
