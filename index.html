@@ -118,12 +118,12 @@
     <label>Fecha</label>
     <input id="kpiDate" type="date" />
 
-<label>Periodo</label>
-<select id="period">
-  <option value="daily">Diario</option>
-  <option value="monthly">Mes (acumulado)</option>
-</select>
-    
+    <label>Periodo</label>
+    <select id="period">
+      <option value="daily">Diario</option>
+      <option value="monthly">Mes (acumulado)</option>
+    </select>
+
     <label>Campaña</label>
     <select id="campaign"></select>
 
@@ -150,6 +150,10 @@
     const campaignSel = $("campaign");
     const kpiDate = $("kpiDate");
     const userInfo = $("userInfo");
+    const periodSel = $("period");
+
+    // META mensual fija por operador
+    const META_MENSUAL = 55;
 
     // fecha por defecto: hoy
     const today = new Date();
@@ -165,130 +169,142 @@
     }
 
     function levelByPct(p, good, warn){
-  // p viene como 0..1
-  if (p >= good) return "good";
-  if (p >= warn) return "warn";
-  return "bad";
-}
+      // p viene como 0..1
+      if (p >= good) return "good";
+      if (p >= warn) return "warn";
+      return "bad";
+    }
 
-function showKpis(row){
-  const reg = row.registros ?? 0;
-  const ven = row.ventas ?? 0;
+    function monthStart(dateStr){
+      // dateStr: "2026-02-10" -> "2026-02-01"
+      return dateStr.slice(0,7) + "-01";
+    }
 
-  const contact = Number(row.contactabilidad ?? 0);
-  const efect  = Number(row.efectividad ?? 0);
-  const rend   = Number(row.rendimiento ?? 0);
+    function showKpis(row){
+      const period = periodSel.value;
 
-  const clsContact = levelByPct(contact, 0.35, 0.25);  // ajusta umbrales si quieres
-  const clsEfect   = levelByPct(efect,  0.35, 0.20);
-  const clsRend    = levelByPct(rend,   0.20, 0.10);
+      const reg = Number(row.registros ?? 0);
+      const ven = Number(row.ventas ?? 0);
 
-  const items = [
-    ["Registros", reg, "neutral"],
-    ["Ventas", ven, "neutral"],
-    ["Contactabilidad", fmt(contact), clsContact],
-    ["Efectividad", fmt(efect), clsEfect],
-    ["Rendimiento", fmt(rend), clsRend],
-  ];
+      const contact = Number(row.contactabilidad ?? 0);
+      const efect  = Number(row.efectividad ?? 0);
+      const rend   = Number(row.rendimiento ?? 0);
 
-  kpisDiv.innerHTML = `
-    <div class="kpisGrid">
-      ${items.map(([k,v,cls]) => `
-        <div class="kpi">
-          <strong>${k}</strong>
-          <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
+      const clsContact = levelByPct(contact, 0.35, 0.25);
+      const clsEfect   = levelByPct(efect,  0.35, 0.20);
+      const clsRend    = levelByPct(rend,   0.20, 0.10);
+
+      const items = [
+        ["Registros", reg, "neutral"],
+        ["Ventas", ven, "neutral"],
+        ["Contactabilidad", fmt(contact), clsContact],
+        ["Efectividad", fmt(efect), clsEfect],
+        ["Rendimiento", fmt(rend), clsRend],
+      ];
+
+      // SOLO en mes acumulado
+      if (period === "monthly"){
+        const meta = META_MENSUAL;
+        const pctMeta = meta ? (ven / meta) : 0;
+
+        // Meta como número
+        items.push(["Meta", meta, "neutral"]);
+
+        // % Meta siempre como porcentaje (aunque sea > 100%)
+        const pctMetaTxt = (pctMeta * 100).toFixed(2) + "%";
+        const clsMeta = levelByPct(pctMeta, 1.0, 0.7); // >=100% bueno, >=70% warning
+        items.push(["% Meta", pctMetaTxt, clsMeta]);
+      }
+
+      kpisDiv.innerHTML = `
+        <div class="kpisGrid">
+          ${items.map(([k,v,cls]) => `
+            <div class="kpi">
+              <strong>${k}</strong>
+              <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
+            </div>
+          `).join("")}
         </div>
-      `).join("")}
-    </div>
-  `;
-}
+      `;
+    }
 
-    const periodSel = $("period");
-
-function monthStart(dateStr){
-  // dateStr: "2026-02-10" -> "2026-02-01"
-  return dateStr.slice(0,7) + "-01";
-}
-
-function avgOrNull(arr){
-  if (!arr.length) return null;
-  return arr.reduce((a,b)=>a+b,0) / arr.length;
-}
-
-
-    
     async function loadCampaigns(){
-  status.textContent = "Cargando campañas...";
-  const period = periodSel.value;
-  const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
-  const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
-  const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+      status.textContent = "Cargando campañas...";
+      const period = periodSel.value;
 
-  const { data, error } = await sb
-    .from(table)
-    .select("campaign")
-    .eq(dateField, dateVal);
+      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
 
-  if (error) { status.textContent = "Error campañas: " + error.message; return; }
+      const { data, error } = await sb
+        .from(table)
+        .select("campaign")
+        .eq(dateField, dateVal);
 
-  const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
-  campaignSel.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
-  status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro (o RLS no permite verlas).";
-}
+      if (error) { status.textContent = "Error campañas: " + error.message; return; }
+
+      const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
+      campaignSel.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
+      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro (o RLS no permite verlas).";
+    }
 
     async function loadKpis(){
-  kpisDiv.innerHTML = "";
-  status.textContent = "Buscando KPIs...";
+      kpisDiv.innerHTML = "";
+      status.textContent = "Buscando KPIs...";
 
-  const period = periodSel.value;
-  const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
-  const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
-  const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
-  const camp = campaignSel.value;
+      const period = periodSel.value;
+      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+      const camp = campaignSel.value;
 
-  const { data, error } = await sb
-    .from(table)
-    .select("*")
-    .eq(dateField, dateVal)
-    .eq("campaign", camp)
-    .limit(1);
+      const { data, error } = await sb
+        .from(table)
+        .select("*")
+        .eq(dateField, dateVal)
+        .eq("campaign", camp)
+        .limit(1);
 
-  if (error) { status.textContent = "Error KPIs: " + error.message; return; }
-  if (!data || data.length === 0){
-    status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
-    return;
-  }
+      if (error) { status.textContent = "Error KPIs: " + error.message; return; }
+      if (!data || data.length === 0){
+        status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
+        return;
+      }
 
-  showKpis(data[0]);
-  status.textContent = "OK.";
-}
-async function loadMyProfile(){
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session?.user) return null;
+      showKpis(data[0]);
+      status.textContent = "OK.";
+    }
 
-  const { data, error } = await sb
-    .from("operators")
-    .select("operator_name, operator_code, role")
-    .eq("auth_user_id", session.user.id)
-    .limit(1);
+    async function loadMyProfile(){
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.user) return null;
 
-  if (error) {
-    console.log("Error profile:", error.message);
-    return null;
-  }
-  return (data && data.length) ? data[0] : null;
-}
-       async function refreshAuthUI(){
+      const { data, error } = await sb
+        .from("operators")
+        .select("operator_name, operator_code, role")
+        .eq("auth_user_id", session.user.id)
+        .limit(1);
+
+      if (error) {
+        console.log("Error profile:", error.message);
+        return null;
+      }
+      return (data && data.length) ? data[0] : null;
+    }
+
+    async function refreshAuthUI(){
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user){
         loginCard.classList.add("hide");
         appCard.classList.remove("hide");
+
         const prof = await loadMyProfile();
-if (prof?.operator_name){
-  userInfo.textContent = `Sesión: ${prof.operator_name} (${session.user.email})`;
-} else {
-  userInfo.textContent = "Sesión: " + session.user.email;
-}
+        if (prof?.operator_name){
+          userInfo.textContent = `Sesión: ${prof.operator_name} (${session.user.email})`;
+        } else {
+          userInfo.textContent = "Sesión: " + session.user.email;
+        }
+
         await loadCampaigns();
       } else {
         loginCard.classList.remove("hide");
@@ -318,15 +334,8 @@ if (prof?.operator_name){
     $("btnLoad").addEventListener("click", loadKpis);
     kpiDate.addEventListener("change", loadCampaigns);
     periodSel.addEventListener("change", loadCampaigns);
+
     refreshAuthUI();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
