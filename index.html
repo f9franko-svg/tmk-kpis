@@ -5,83 +5,96 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TMK KPIs</title>
   <style>
- :root{
-    --bg:#0b1220;
-    --card:#0f1a30;
-    --card2:#111f3a;
-    --text:#e9eefc;
-    --muted:#a9b4d0;
-    --border:rgba(255,255,255,.10);
-    --good:#22c55e;
-    --warn:#f59e0b;
-    --bad:#ef4444;
-    --accent:#60a5fa;
-  }
-  body{
-    font-family:system-ui,Arial;
-    max-width:780px;margin:28px auto;padding:0 14px;
-    background:linear-gradient(180deg,#070b14 0%, #0b1220 60%, #070b14 100%);
-    color:var(--text);
-  }
-  h2{letter-spacing:.3px;margin:6px 0 14px 0}
-  .muted{color:var(--muted);font-size:12px}
+    :root{
+      --bg:#0b1220;
+      --card:#0f1a30;
+      --card2:#111f3a;
+      --text:#e9eefc;
+      --muted:#a9b4d0;
+      --border:rgba(255,255,255,.10);
+      --good:#22c55e;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+      --accent:#60a5fa;
+    }
+    body{
+      font-family:system-ui,Arial;
+      max-width:780px;margin:28px auto;padding:0 14px;
+      background:linear-gradient(180deg,#070b14 0%, #0b1220 60%, #070b14 100%);
+      color:var(--text);
+    }
+    h2{letter-spacing:.3px;margin:6px 0 14px 0}
+    .muted{color:var(--muted);font-size:12px;line-height:1.35}
 
-  .card{
-    background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:16px;
-    margin:14px 0;
-    box-shadow:0 10px 30px rgba(0,0,0,.35);
-  }
-  input,button,select{
-    width:100%;
-    padding:11px 12px;
-    border-radius:12px;
-    border:1px solid var(--border);
-    margin:7px 0;
-    background:rgba(255,255,255,.04);
-    color:var(--text);
-    outline:none;
-  }
-  input::placeholder{color:rgba(233,238,252,.45)}
-  button{
-    cursor:pointer;
-    background:linear-gradient(90deg, rgba(96,165,250,.9) 0%, rgba(34,197,94,.75) 100%);
-    border:none;
-    font-weight:700;
-  }
-  button:hover{filter:brightness(1.05)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
-  .hide{display:none}
+    .card{
+      background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:16px;
+      margin:14px 0;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    input,button,select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      margin:7px 0;
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      outline:none;
+    }
+    input::placeholder{color:rgba(233,238,252,.45)}
+    button{
+      cursor:pointer;
+      background:linear-gradient(90deg, rgba(96,165,250,.9) 0%, rgba(34,197,94,.75) 100%);
+      border:none;
+      font-weight:700;
+    }
+    button:hover{filter:brightness(1.05)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
+    .hide{display:none}
 
-  .kpisGrid{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:10px;
-    margin-top:10px;
-  }
-  .kpi{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:12px 12px;
-    border-radius:14px;
-    background:rgba(255,255,255,.04);
-    border:1px solid var(--border);
-  }
-  .kpi strong{font-size:14px}
-  .kpi span{font-variant-numeric:tabular-nums}
-  .badge{
-    padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;
-    border:1px solid var(--border);
-  }
-  .good{color:var(--good)}
-  .warn{color:var(--warn)}
-  .bad{color:var(--bad)}
+    .kpisGrid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:10px;
+    }
+    .kpi{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:12px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border);
+    }
+    .kpi strong{font-size:14px}
+    .kpi span{font-variant-numeric:tabular-nums}
+    .badge{
+      padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800;
+      border:1px solid var(--border);
+    }
+    .good{color:var(--good)}
+    .warn{color:var(--warn)}
+    .bad{color:var(--bad)}
+
+    .metaRow{
+      margin-top:10px;
+      display:flex;gap:8px;flex-wrap:wrap;
+    }
+    .pill{
+      display:inline-flex;gap:8px;align-items:center;
+      padding:6px 10px;border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      font-size:12px;color:var(--muted)
+    }
+    .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
   </style>
 </head>
 <body>
   <h2>TMK KPIs</h2>
-  <p class="muted">"Cree que puedes y estarás a mitad de camino"</p>
+  <p class="muted">Resultados por operador (RLS). Si todo está bien, cada quien ve solo lo suyo.</p>
 
   <div id="loginCard" class="card">
     <h3>Iniciar sesión</h3>
@@ -94,7 +107,7 @@
   <div id="appCard" class="card hide">
     <div class="row">
       <div>
-        <h3>RESULTADOS TMK - GEA GUATEMALA</h3>
+        <h3 style="margin:0">RESULTADOS TMK</h3>
         <div class="muted" id="userInfo"></div>
       </div>
       <div>
@@ -111,19 +124,18 @@
       <option value="monthly">Mes (acumulado)</option>
     </select>
 
-    <!-- Vista: SOLO SUPERVISOR (y solo visible cuando Periodo=monthly) -->
-    <label id="viewLabel" class="hide">Vista</label>
-    <select id="viewMode" class="hide">
-      <option value="me">Mis KPIs</option>
-      <option value="global">Global TMK</option>
-    </select>
-
     <label>Campaña</label>
     <select id="campaign"></select>
 
     <button id="btnLoad">Cargar KPIs</button>
 
     <div id="kpis"></div>
+
+    <div class="metaRow">
+      <div class="pill"><span class="dot"></span><span id="dataAsOf">Datos al: —</span></div>
+      <div class="pill"><span class="dot"></span><span id="filtersInfo">Filtro: —</span></div>
+    </div>
+
     <div class="muted" id="status"></div>
   </div>
 
@@ -134,61 +146,57 @@
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
     const $ = (id) => document.getElementById(id);
+
     const loginCard = $("loginCard");
     const appCard = $("appCard");
     const loginMsg = $("loginMsg");
     const status = $("status");
+
     const kpisDiv = $("kpis");
     const campaignSel = $("campaign");
     const kpiDate = $("kpiDate");
     const userInfo = $("userInfo");
     const periodSel = $("period");
-    const viewLabel = $("viewLabel");
-    const viewMode = $("viewMode");
 
-    const META_MENSUAL = 55;
-    let myProfile = null; // {operator_name, operator_code, role}
+    const dataAsOf = $("dataAsOf");
+    const filtersInfo = $("filtersInfo");
 
+    // fecha default hoy
     const today = new Date();
     kpiDate.value = today.toISOString().slice(0,10);
-
-    function fmt(n){
-      if (n === null || n === undefined) return "—";
-      if (typeof n === "number") {
-        if (n >= 0 && n <= 1) return (n*100).toFixed(2) + "%";
-        return n.toLocaleString("es-GT");
-      }
-      return n;
-    }
-
-    function levelByPct(p, good, warn){
-      if (p >= good) return "good";
-      if (p >= warn) return "warn";
-      return "bad";
-    }
 
     function monthStart(dateStr){
       return dateStr.slice(0,7) + "-01";
     }
 
-    function showKpis(items){
-      kpisDiv.innerHTML = `
-        <div class="kpisGrid">
-          ${items.map(({label,value,cls}) => `
-            <div class="kpi">
-              <strong>${label}</strong>
-              <span class="badge ${cls || ""}">${value}</span>
-            </div>
-          `).join("")}
-        </div>
-      `;
+    function fmtNumber(n){
+      if (n === null || n === undefined) return "—";
+      if (typeof n === "number") return n.toLocaleString("es-GT");
+      return n;
     }
 
-    function buildItemsFromRow(row, opts){
-      // opts: { period, view }
+    function fmtPct(p){
+      const n = Number(p ?? 0);
+      return (n * 100).toFixed(2) + "%";
+    }
+
+    function levelByPct(p, good, warn){
+      const n = Number(p ?? 0);
+      if (n >= good) return "good";
+      if (n >= warn) return "warn";
+      return "bad";
+    }
+
+    function fmtUpdatedAt(iso){
+      if (!iso) return "—";
+      // iso tipo: 2026-02-18T20:15:22Z
+      const s = String(iso).replace("T"," ").replace("Z"," UTC");
+      return s;
+    }
+
+    function showKpis(row){
       const reg = Number(row.registros ?? 0);
       const ven = Number(row.ventas ?? 0);
-
       const contact = Number(row.contactabilidad ?? 0);
       const efect  = Number(row.efectividad ?? 0);
       const rend   = Number(row.rendimiento ?? 0);
@@ -198,133 +206,77 @@
       const clsRend    = levelByPct(rend,   0.20, 0.10);
 
       const items = [
-        { label:"Registros", value: fmt(reg), cls:"" },
-        { label:"Ventas", value: fmt(ven), cls:"" },
-        { label:"Contactabilidad", value: fmt(contact), cls:clsContact },
-        { label:"Efectividad", value: fmt(efect), cls:clsEfect },
-        { label:"Rendimiento", value: fmt(rend), cls:clsRend },
+        ["Registros", fmtNumber(reg), ""],
+        ["Ventas", fmtNumber(ven), ""],
+        ["Contactabilidad", fmtPct(contact), clsContact],
+        ["Efectividad", fmtPct(efect), clsEfect],
+        ["Rendimiento", fmtPct(rend), clsRend],
       ];
 
-      // SOLO cuando Mes (acumulado)
-      if (opts.period === "monthly") {
-        if (opts.view === "me") {
-          const meta = META_MENSUAL;
-          const pct = meta > 0 ? (ven / meta) : 0;
-          items.push(
-            { label:"META", value: fmt(meta), cls:"" },
-            { label:"% META", value: fmt(pct), cls: levelByPct(pct, 1.0, 0.75) }
-          );
-        } else if (opts.view === "global") {
-          // viene del RPC: meta y pct_meta
-          const meta = Number(row.meta ?? 0);
-          const pct = Number(row.pct_meta ?? 0);
-          items.push(
-            { label:"META (Global)", value: fmt(meta), cls:"" },
-            { label:"% META (Global)", value: fmt(pct), cls: levelByPct(pct, 1.0, 0.75) }
-          );
-        }
-      }
-      return items;
+      kpisDiv.innerHTML = `
+        <div class="kpisGrid">
+          ${items.map(([k,v,cls]) => `
+            <div class="kpi">
+              <strong>${k}</strong>
+              <span class="badge ${cls}">${v}</span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+
+      dataAsOf.textContent = "Datos al: " + fmtUpdatedAt(row.updated_at);
     }
 
-    async function loadMyProfile(){
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session?.user) return null;
-
-      const { data, error } = await sb
-        .from("operators")
-        .select("operator_name, operator_code, role")
-        .eq("auth_user_id", session.user.id)
-        .limit(1);
-
-      if (error) {
-        console.log("Error profile:", error.message);
-        return null;
-      }
-      return (data && data.length) ? data[0] : null;
+    function currentQueryInfo(){
+      const period = periodSel.value;
+      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+      const camp = campaignSel.value || "—";
+      return { period, dateVal, table, dateField, camp };
     }
 
-    function refreshSupervisorUI(){
-      const isSup = (myProfile?.role === "supervisor");
-      const isMonthly = (periodSel.value === "monthly");
-
-      // Vista SOLO para supervisor y SOLO cuando monthly
-      if (isSup && isMonthly) {
-        viewLabel.classList.remove("hide");
-        viewMode.classList.remove("hide");
-      } else {
-        viewLabel.classList.add("hide");
-        viewMode.classList.add("hide");
-        viewMode.value = "me"; // forzar
-      }
-
-      // Campaña: en Global mensual no aplica (pero la dejamos para no romper tu UI)
-      // Si quieres, podemos ocultarla en global. Por ahora: visible siempre.
-    }
-
+    // --- Cargar campañas según filtro
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
-      kpisDiv.innerHTML = "";
-
-      const period = periodSel.value;
-      const isMonthly = (period === "monthly");
-      const isSup = (myProfile?.role === "supervisor");
-      const view = viewMode.value;
-
-      refreshSupervisorUI();
-
-      // Si es Global mensual, campañas no son necesarias (porque es global).
-      // Pero dejamos el selector con una opción "GLOBAL" para que el flujo siga igual.
-      if (isMonthly && isSup && view === "global") {
-        campaignSel.innerHTML = `<option value="__GLOBAL__">GLOBAL TMK</option>`;
-        status.textContent = "Vista Global TMK (mensual).";
-        return;
-      }
-
-      const dateVal = isMonthly ? monthStart(kpiDate.value) : kpiDate.value;
-      const table = isMonthly ? "kpi_monthly" : "kpi_daily";
-      const dateField = isMonthly ? "kpi_month" : "kpi_date";
+      const { period, dateVal, table, dateField } = currentQueryInfo();
 
       const { data, error } = await sb
         .from(table)
         .select("campaign")
         .eq(dateField, dateVal);
 
-      if (error) { status.textContent = "Error campañas: " + error.message; return; }
+      if (error){
+        status.textContent = "Error campañas: " + error.message;
+        campaignSel.innerHTML = "";
+        return;
+      }
 
       const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
       campaignSel.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
-      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro (o RLS no permite verlas).";
+
+      filtersInfo.textContent = `Filtro: ${period === "daily" ? "Diario" : "Mes"} | ${dateVal}`;
+
+      if (!uniq.length){
+        status.textContent = "No hay campañas para ese filtro (o no tienes permiso por RLS).";
+        kpisDiv.innerHTML = "";
+        dataAsOf.textContent = "Datos al: —";
+        return;
+      }
+
+      status.textContent = "Campañas cargadas.";
     }
 
+    // --- Cargar KPIs según filtro
     async function loadKpis(){
       kpisDiv.innerHTML = "";
       status.textContent = "Buscando KPIs...";
 
-      const period = periodSel.value;
-      const isMonthly = (period === "monthly");
-      const isSup = (myProfile?.role === "supervisor");
-      const view = viewMode.value;
-
-      const dateVal = isMonthly ? monthStart(kpiDate.value) : kpiDate.value;
-
-      // 1) Global mensual (solo supervisor): RPC
-      if (isMonthly && isSup && view === "global") {
-        const { data, error } = await sb.rpc("get_global_monthly_kpis", { p_month: dateVal });
-        if (error) { status.textContent = "Error Global: " + error.message; return; }
-        if (!data || data.length === 0) { status.textContent = "No hay datos globales para ese mes (o no eres supervisor)."; return; }
-
-        const row = data[0];
-        const items = buildItemsFromRow(row, { period:"monthly", view:"global" });
-        showKpis(items);
-        status.textContent = "OK.";
+      const { dateVal, table, dateField, camp, period } = currentQueryInfo();
+      if (!camp || camp === "—"){
+        status.textContent = "Selecciona campaña.";
         return;
       }
-
-      // 2) Mis KPIs (diario o mensual): tablas normales (RLS)
-      const table = isMonthly ? "kpi_monthly" : "kpi_daily";
-      const dateField = isMonthly ? "kpi_month" : "kpi_date";
-      const camp = campaignSel.value;
 
       const { data, error } = await sb
         .from(table)
@@ -333,16 +285,38 @@
         .eq("campaign", camp)
         .limit(1);
 
-      if (error) { status.textContent = "Error KPIs: " + error.message; return; }
+      if (error){
+        status.textContent = "Error KPIs: " + error.message;
+        return;
+      }
       if (!data || data.length === 0){
         status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
+        dataAsOf.textContent = "Datos al: —";
         return;
       }
 
-      const row = data[0];
-      const items = buildItemsFromRow(row, { period: isMonthly ? "monthly" : "daily", view:"me" });
-      showKpis(items);
+      showKpis(data[0]);
+      filtersInfo.textContent = `Filtro: ${period === "daily" ? "Diario" : "Mes"} | ${dateVal} | ${camp}`;
       status.textContent = "OK.";
+    }
+
+    // --- Perfil (nombre operador)
+    async function loadMyProfile(){
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.user) return null;
+
+      // ojo: tu tabla debe llamarse "operators" y tener auth_user_id, operator_name
+      const { data, error } = await sb
+        .from("operators")
+        .select("operator_name, operator_code, role")
+        .eq("auth_user_id", session.user.id)
+        .limit(1);
+
+      if (error){
+        console.log("Error profile:", error.message);
+        return null;
+      }
+      return (data && data.length) ? data[0] : null;
     }
 
     async function refreshAuthUI(){
@@ -351,24 +325,26 @@
         loginCard.classList.add("hide");
         appCard.classList.remove("hide");
 
-        myProfile = await loadMyProfile();
-
-        if (myProfile?.operator_name){
-          userInfo.textContent = `Sesión: ${myProfile.operator_name} (${session.user.email})`;
+        const prof = await loadMyProfile();
+        if (prof?.operator_name){
+          userInfo.textContent = `Sesión: ${prof.operator_name} (${session.user.email})`;
         } else {
           userInfo.textContent = "Sesión: " + session.user.email;
         }
 
-        refreshSupervisorUI();
         await loadCampaigns();
+        // auto-load KPIs si ya hay campaña
+        if (campaignSel.value) await loadKpis();
       } else {
         loginCard.classList.remove("hide");
         appCard.classList.add("hide");
         loginMsg.textContent = "";
-        myProfile = null;
       }
     }
 
+    // ======================
+    // Eventos
+    // ======================
     $("btnLogin").addEventListener("click", async () => {
       loginMsg.textContent = "Ingresando...";
       const email = $("email").value.trim();
@@ -387,10 +363,23 @@
       await refreshAuthUI();
     });
 
+    // Mantengo botón, pero ya no es obligatorio
     $("btnLoad").addEventListener("click", loadKpis);
-    kpiDate.addEventListener("change", loadCampaigns);
-    periodSel.addEventListener("change", async () => { refreshSupervisorUI(); await loadCampaigns(); });
-    viewMode.addEventListener("change", async () => { await loadCampaigns(); });
+
+    // AUTOLOAD: cuando cambias filtros
+    kpiDate.addEventListener("change", async () => {
+      await loadCampaigns();
+      if (campaignSel.value) await loadKpis();
+    });
+
+    periodSel.addEventListener("change", async () => {
+      await loadCampaigns();
+      if (campaignSel.value) await loadKpis();
+    });
+
+    campaignSel.addEventListener("change", async () => {
+      if (campaignSel.value) await loadKpis();
+    });
 
     refreshAuthUI();
   </script>
