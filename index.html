@@ -93,6 +93,12 @@
       border:1px solid var(--border);
     }
     canvas{width:100%; height:280px;}
+
+    .inline2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
   </style>
 </head>
 
@@ -152,6 +158,18 @@
         <select id="operatorPick"></select>
       </div>
 
+      <!-- NUEVO: rango fechas para el gráfico -->
+      <div class="inline2">
+        <div>
+          <label>Desde</label>
+          <input id="chartFrom" type="date" />
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input id="chartTo" type="date" />
+        </div>
+      </div>
+
       <div class="chartWrap">
         <div class="muted" id="chartTitle">Ventas por Mes</div>
         <canvas id="salesChart"></canvas>
@@ -166,7 +184,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <script>
-    // ===== Supabase =====
     const SUPABASE_URL = "https://sjxqhlhvsdxgahpndxcc.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_IvVkMu9brJvX19qfqoBlxA_3cp2Qq85";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -189,14 +206,25 @@
     const operatorPick = $("operatorPick");
     const chartStatus = $("chartStatus");
     const chartTitle = $("chartTitle");
+    const chartFrom = $("chartFrom");
+    const chartTo = $("chartTo");
 
     const ALL_CAMPAIGNS_VALUE = "__ALL__";
 
     // fecha por defecto: hoy
     const today = new Date();
-    kpiDate.value = today.toISOString().slice(0,10);
+    const todayStr = today.toISOString().slice(0,10);
+    kpiDate.value = todayStr;
 
-    // ===== Helpers =====
+    // rango default gráfico: últimos 12 meses
+    function addMonths(dateStr, delta){
+      const d = new Date(dateStr + "T00:00:00");
+      d.setMonth(d.getMonth() + delta);
+      return d.toISOString().slice(0,10);
+    }
+    chartTo.value = todayStr;
+    chartFrom.value = addMonths(todayStr, -12);
+
     function fmt(n){
       if (n === null || n === undefined) return "—";
       if (typeof n === "number") {
@@ -248,7 +276,6 @@
       return dateStr.slice(0,7) + "-01";
     }
 
-    // ===== KPIs (tabla diaria / mensual) =====
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
 
@@ -265,8 +292,6 @@
       if (error) { status.textContent = "Error campañas: " + error.message; return; }
 
       const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
-
-      // Agrega TODAS para que el gráfico pueda usar global sin campaign
       const options = [
         `<option value="${ALL_CAMPAIGNS_VALUE}">TODAS</option>`,
         ...uniq.map(c => `<option value="${c}">${c}</option>`)
@@ -286,8 +311,6 @@
       const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
       const camp = campaignSel.value;
 
-      // KPIs: si eligen TODAS, no tiene sentido (kpi_daily/kpi_monthly son por campaña),
-      // forzamos a que elija una campaña real.
       if (camp === ALL_CAMPAIGNS_VALUE){
         status.textContent = "Para KPIs selecciona una campaña específica (TODAS es solo para gráficas).";
         return;
@@ -302,7 +325,7 @@
 
       if (error) { status.textContent = "Error KPIs: " + error.message; return; }
       if (!data || data.length === 0){
-        status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
+        status.textContent = "No hay KPIs para ese filtro.";
         return;
       }
 
@@ -310,7 +333,6 @@
       status.textContent = "OK.";
     }
 
-    // ===== Profile (operators table) =====
     async function loadMyProfile(){
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.user) return null;
@@ -360,23 +382,27 @@
         type: "bar",
         data: {
           labels,
-          datasets: [{
-            label: "Ventas",
-            data: values
-          }]
+          datasets: [{ label: "Ventas", data: values }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: true } },
-          scales: { y: { beginAtZero: true } }
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                precision: 0,
+                callback: (value) => Number(value).toLocaleString("es-GT")
+              }
+            }
+          }
         }
       });
     }
 
     async function loadSalesChart(){
       chartStatus.textContent = "Cargando gráfico...";
-      chartTitle.textContent = "Ventas por Mes";
 
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.user){
@@ -391,7 +417,11 @@
       const camp = campaignSel.value;
       const isAllCampaigns = (camp === ALL_CAMPAIGNS_VALUE);
 
-      // Determina operator_code si aplica
+      // rango
+      const fromMonth = monthStart(chartFrom.value);
+      const toMonth   = monthStart(chartTo.value);
+
+      // operator_code si aplica
       const opCode = (scope === "all") ? null : ((scope === "operator") ? operatorPick.value : myCode);
 
       let view = "";
@@ -402,6 +432,8 @@
         view = "kpi_monthly_global_total";
         q = sb.from(view)
           .select("kpi_month, ventas_total")
+          .gte("kpi_month", fromMonth)
+          .lte("kpi_month", toMonth)
           .order("kpi_month", { ascending: true });
 
       } else if (scope === "all" && !isAllCampaigns){
@@ -409,6 +441,8 @@
         q = sb.from(view)
           .select("kpi_month, ventas_total")
           .eq("campaign", camp)
+          .gte("kpi_month", fromMonth)
+          .lte("kpi_month", toMonth)
           .order("kpi_month", { ascending: true });
 
       } else {
@@ -422,6 +456,8 @@
           q = sb.from(view)
             .select("kpi_month, ventas_total")
             .eq("operator_code", opCode)
+            .gte("kpi_month", fromMonth)
+            .lte("kpi_month", toMonth)
             .order("kpi_month", { ascending: true });
         } else {
           view = "kpi_monthly_operator_total_campaign";
@@ -429,9 +465,13 @@
             .select("kpi_month, ventas_total")
             .eq("operator_code", opCode)
             .eq("campaign", camp)
+            .gte("kpi_month", fromMonth)
+            .lte("kpi_month", toMonth)
             .order("kpi_month", { ascending: true });
         }
       }
+
+      chartTitle.textContent = `Ventas por Mes (${fromMonth.slice(0,7)} a ${toMonth.slice(0,7)})`;
 
       const { data, error } = await q;
 
@@ -443,19 +483,18 @@
 
       const rows = data || [];
       if (!rows.length){
-        chartStatus.textContent = "Sin datos para ese filtro. Prueba otra campaña o elige TODAS.";
+        chartStatus.textContent = "Sin datos para ese rango/filtro.";
         destroyChart();
         return;
       }
 
-      const labels = rows.map(r => String(r.kpi_month || "").slice(0,7)); // YYYY-MM
+      const labels = rows.map(r => String(r.kpi_month || "").slice(0,7));
       const values = rows.map(r => Number(r.ventas_total || 0));
 
       makeChart(labels, values);
       chartStatus.textContent = "OK.";
     }
 
-    // ===== UI refresh =====
     async function refreshAuthUI(){
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user){
@@ -484,7 +523,6 @@
       }
     }
 
-    // ===== Events =====
     $("btnLogin").addEventListener("click", async () => {
       loginMsg.textContent = "Ingresando...";
       const email = $("email").value.trim();
