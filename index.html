@@ -58,18 +58,11 @@
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
     .hide{display:none}
 
-    .kpisGrid{
-      display:grid;
-      grid-template-columns:1fr;
-      gap:10px;
-      margin-top:10px;
-    }
+    .kpisGrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
     .kpi{
       display:flex;justify-content:space-between;align-items:center;
-      padding:12px 12px;
-      border-radius:14px;
-      background:rgba(255,255,255,.04);
-      border:1px solid var(--border);
+      padding:12px 12px;border-radius:14px;
+      background:rgba(255,255,255,.04);border:1px solid var(--border);
     }
     .kpi strong{font-size:14px}
     .badge{
@@ -80,25 +73,13 @@
     .warn{color:var(--warn)}
     .bad{color:var(--bad)}
 
-    .sectionTitle{
-      margin:18px 0 6px 0;
-      font-weight:800;
-      letter-spacing:.2px;
-    }
+    .sectionTitle{margin:18px 0 6px 0;font-weight:800;letter-spacing:.2px}
     .chartWrap{
-      margin-top:10px;
-      padding:12px;
-      border-radius:14px;
-      background:rgba(255,255,255,.03);
-      border:1px solid var(--border);
+      margin-top:10px;padding:12px;border-radius:14px;
+      background:rgba(255,255,255,.03);border:1px solid var(--border);
     }
     canvas{width:100%; height:280px;}
-
-    .inline2{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
+    .inline2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   </style>
 </head>
 
@@ -120,9 +101,7 @@
         <h3>RESULTADOS TMK - GEA GUATEMALA</h3>
         <div class="muted" id="userInfo"></div>
       </div>
-      <div>
-        <button id="btnLogout">Cerrar sesión</button>
-      </div>
+      <div><button id="btnLogout">Cerrar sesión</button></div>
     </div>
 
     <label>Fecha</label>
@@ -146,6 +125,12 @@
     <div id="supervisorZone" class="hide">
       <div class="sectionTitle">Gráficas</div>
 
+      <label>Tipo de gráfica</label>
+      <select id="chartMode">
+        <option value="monthly">Mes (comparación mes a mes)</option>
+        <option value="daily">Día (tendencia día a día)</option>
+      </select>
+
       <label>Alcance</label>
       <select id="scope">
         <option value="me">Mi usuario</option>
@@ -158,7 +143,6 @@
         <select id="operatorPick"></select>
       </div>
 
-      <!-- NUEVO: rango fechas para el gráfico -->
       <div class="inline2">
         <div>
           <label>Desde</label>
@@ -171,7 +155,7 @@
       </div>
 
       <div class="chartWrap">
-        <div class="muted" id="chartTitle">Ventas por Mes</div>
+        <div class="muted" id="chartTitle">Ventas</div>
         <canvas id="salesChart"></canvas>
       </div>
 
@@ -201,6 +185,7 @@
     const periodSel = $("period");
 
     const supervisorZone = $("supervisorZone");
+    const chartModeSel = $("chartMode");
     const scopeSel = $("scope");
     const operatorPickWrap = $("operatorPickWrap");
     const operatorPick = $("operatorPick");
@@ -211,12 +196,10 @@
 
     const ALL_CAMPAIGNS_VALUE = "__ALL__";
 
-    // fecha por defecto: hoy
     const today = new Date();
     const todayStr = today.toISOString().slice(0,10);
     kpiDate.value = todayStr;
 
-    // rango default gráfico: últimos 12 meses
     function addMonths(dateStr, delta){
       const d = new Date(dateStr + "T00:00:00");
       d.setMonth(d.getMonth() + delta);
@@ -272,9 +255,7 @@
       `;
     }
 
-    function monthStart(dateStr){
-      return dateStr.slice(0,7) + "-01";
-    }
+    function monthStart(dateStr){ return dateStr.slice(0,7) + "-01"; }
 
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
@@ -284,11 +265,7 @@
       const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
       const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
 
-      const { data, error } = await sb
-        .from(table)
-        .select("campaign")
-        .eq(dateField, dateVal);
-
+      const { data, error } = await sb.from(table).select("campaign").eq(dateField, dateVal);
       if (error) { status.textContent = "Error campañas: " + error.message; return; }
 
       const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
@@ -297,8 +274,7 @@
         ...uniq.map(c => `<option value="${c}">${c}</option>`)
       ];
       campaignSel.innerHTML = options.join("");
-
-      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro (o RLS no permite verlas).";
+      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro.";
     }
 
     async function loadKpis(){
@@ -316,18 +292,11 @@
         return;
       }
 
-      const { data, error } = await sb
-        .from(table)
-        .select("*")
-        .eq(dateField, dateVal)
-        .eq("campaign", camp)
-        .limit(1);
+      const { data, error } = await sb.from(table).select("*")
+        .eq(dateField, dateVal).eq("campaign", camp).limit(1);
 
       if (error) { status.textContent = "Error KPIs: " + error.message; return; }
-      if (!data || data.length === 0){
-        status.textContent = "No hay KPIs para ese filtro.";
-        return;
-      }
+      if (!data || !data.length){ status.textContent = "No hay KPIs para ese filtro."; return; }
 
       showKpis(data[0]);
       status.textContent = "OK.";
@@ -337,8 +306,7 @@
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.user) return null;
 
-      const { data, error } = await sb
-        .from("operators")
+      const { data, error } = await sb.from("operators")
         .select("operator_name, operator_code, role")
         .eq("auth_user_id", session.user.id)
         .limit(1);
@@ -348,52 +316,67 @@
     }
 
     async function loadOperatorsList(){
-      const { data, error } = await sb
-        .from("operators")
+      chartStatus.textContent = "Cargando operadores...";
+      const { data, error } = await sb.from("operators")
         .select("operator_code, operator_name, role")
         .eq("role", "operator")
         .order("operator_name", { ascending: true });
 
       if (error) {
-        chartStatus.textContent = "No pude cargar operadores: " + error.message;
+        chartStatus.textContent = "Error leyendo operators (RLS): " + error.message;
+        operatorPick.innerHTML = "";
         return;
       }
 
-      operatorPick.innerHTML = (data || []).map(o =>
+      const rows = data || [];
+      operatorPick.innerHTML = rows.map(o =>
         `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
       ).join("");
+
+      chartStatus.textContent = rows.length ? "Operadores cargados." : "No hay operadores visibles (RLS).";
     }
 
     // ===== Chart =====
     let chart = null;
 
-    function destroyChart(){
-      if (chart){
-        chart.destroy();
-        chart = null;
-      }
+    function destroyChart(){ if(chart){ chart.destroy(); chart=null; } }
+
+    function niceStep(maxVal){
+      if (maxVal <= 10) return 1;
+      const rough = maxVal / 6;
+      const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+      const n = rough / pow;
+      let m = 1;
+      if (n <= 1) m = 1;
+      else if (n <= 2) m = 2;
+      else if (n <= 5) m = 5;
+      else m = 10;
+      return m * pow;
     }
 
     function makeChart(labels, values){
       const ctx = $("salesChart").getContext("2d");
       destroyChart();
 
+      const maxVal = Math.max(...values, 0);
+      const step = niceStep(maxVal || 1);
+      const maxAxis = Math.ceil((maxVal || 1) / step) * step;
+
       chart = new Chart(ctx, {
         type: "bar",
-        data: {
-          labels,
-          datasets: [{ label: "Ventas", data: values }]
-        },
+        data: { labels, datasets: [{ label: "Ventas", data: values }] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { display: true } },
           scales: {
             y: {
-              beginAtZero: true,
+              min: 0,
+              max: maxAxis,
               ticks: {
+                stepSize: step,
                 precision: 0,
-                callback: (value) => Number(value).toLocaleString("es-GT")
+                callback: (v) => Number(v).toLocaleString("es-GT")
               }
             }
           }
@@ -404,95 +387,116 @@
     async function loadSalesChart(){
       chartStatus.textContent = "Cargando gráfico...";
 
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session?.user){
-        chartStatus.textContent = "Sin sesión.";
-        return;
-      }
-
       const scope = scopeSel.value; // me | all | operator
+      const mode = chartModeSel.value; // monthly | daily
       const myProf = await loadMyProfile();
       const myCode = myProf?.operator_code;
 
       const camp = campaignSel.value;
       const isAllCampaigns = (camp === ALL_CAMPAIGNS_VALUE);
 
-      // rango
-      const fromMonth = monthStart(chartFrom.value);
-      const toMonth   = monthStart(chartTo.value);
+      const from = chartFrom.value;
+      const to = chartTo.value;
 
-      // operator_code si aplica
       const opCode = (scope === "all") ? null : ((scope === "operator") ? operatorPick.value : myCode);
 
       let view = "";
       let q = null;
 
-      // ---- Selección de vista según alcance + campaña ----
-      if (scope === "all" && isAllCampaigns){
-        view = "kpi_monthly_global_total";
-        q = sb.from(view)
-          .select("kpi_month, ventas_total")
-          .gte("kpi_month", fromMonth)
-          .lte("kpi_month", toMonth)
-          .order("kpi_month", { ascending: true });
+      if (mode === "monthly"){
+        const fromM = monthStart(from);
+        const toM = monthStart(to);
 
-      } else if (scope === "all" && !isAllCampaigns){
-        view = "kpi_monthly_global_total_campaign";
-        q = sb.from(view)
-          .select("kpi_month, ventas_total")
-          .eq("campaign", camp)
-          .gte("kpi_month", fromMonth)
-          .lte("kpi_month", toMonth)
-          .order("kpi_month", { ascending: true });
+        if (scope === "all" && isAllCampaigns){
+          view = "kpi_monthly_global_total";
+          q = sb.from(view).select("kpi_month, ventas_total")
+            .gte("kpi_month", fromM).lte("kpi_month", toM)
+            .order("kpi_month", { ascending: true });
+
+        } else if (scope === "all" && !isAllCampaigns){
+          view = "kpi_monthly_global_total_campaign";
+          q = sb.from(view).select("kpi_month, ventas_total")
+            .eq("campaign", camp)
+            .gte("kpi_month", fromM).lte("kpi_month", toM)
+            .order("kpi_month", { ascending: true });
+
+        } else {
+          if (!opCode){ chartStatus.textContent = "Selecciona operador."; return; }
+
+          if (isAllCampaigns){
+            view = "kpi_monthly_operator_total";
+            q = sb.from(view).select("kpi_month, ventas_total")
+              .eq("operator_code", opCode)
+              .gte("kpi_month", fromM).lte("kpi_month", toM)
+              .order("kpi_month", { ascending: true });
+          } else {
+            view = "kpi_monthly_operator_total_campaign";
+            q = sb.from(view).select("kpi_month, ventas_total")
+              .eq("operator_code", opCode).eq("campaign", camp)
+              .gte("kpi_month", fromM).lte("kpi_month", toM)
+              .order("kpi_month", { ascending: true });
+          }
+        }
+
+        chartTitle.textContent = `Ventas por Mes (${fromM.slice(0,7)} a ${toM.slice(0,7)})`;
+
+        const { data, error } = await q;
+        if (error){ chartStatus.textContent = `Error (${view}): ${error.message}`; destroyChart(); return; }
+
+        const rows = data || [];
+        if (!rows.length){ chartStatus.textContent = "Sin datos para ese rango."; destroyChart(); return; }
+
+        const labels = rows.map(r => String(r.kpi_month).slice(0,7));
+        const values = rows.map(r => Number(r.ventas_total || 0));
+        makeChart(labels, values);
+        chartStatus.textContent = "OK.";
 
       } else {
-        if (!opCode){
-          chartStatus.textContent = "No tengo operator_code para graficar.";
-          return;
-        }
+        // DAILY
+        if (scope === "all" && isAllCampaigns){
+          view = "kpi_daily_global_total";
+          q = sb.from(view).select("kpi_date, ventas_total")
+            .gte("kpi_date", from).lte("kpi_date", to)
+            .order("kpi_date", { ascending: true });
 
-        if (isAllCampaigns){
-          view = "kpi_monthly_operator_total";
-          q = sb.from(view)
-            .select("kpi_month, ventas_total")
-            .eq("operator_code", opCode)
-            .gte("kpi_month", fromMonth)
-            .lte("kpi_month", toMonth)
-            .order("kpi_month", { ascending: true });
-        } else {
-          view = "kpi_monthly_operator_total_campaign";
-          q = sb.from(view)
-            .select("kpi_month, ventas_total")
-            .eq("operator_code", opCode)
+        } else if (scope === "all" && !isAllCampaigns){
+          view = "kpi_daily_global_total_campaign";
+          q = sb.from(view).select("kpi_date, ventas_total")
             .eq("campaign", camp)
-            .gte("kpi_month", fromMonth)
-            .lte("kpi_month", toMonth)
-            .order("kpi_month", { ascending: true });
+            .gte("kpi_date", from).lte("kpi_date", to)
+            .order("kpi_date", { ascending: true });
+
+        } else {
+          if (!opCode){ chartStatus.textContent = "Selecciona operador."; return; }
+
+          if (isAllCampaigns){
+            view = "kpi_daily_operator_total";
+            q = sb.from(view).select("kpi_date, ventas_total")
+              .eq("operator_code", opCode)
+              .gte("kpi_date", from).lte("kpi_date", to)
+              .order("kpi_date", { ascending: true });
+          } else {
+            view = "kpi_daily_operator_total_campaign";
+            q = sb.from(view).select("kpi_date, ventas_total")
+              .eq("operator_code", opCode).eq("campaign", camp)
+              .gte("kpi_date", from).lte("kpi_date", to)
+              .order("kpi_date", { ascending: true });
+          }
         }
+
+        chartTitle.textContent = `Ventas por Día (${from} a ${to})`;
+
+        const { data, error } = await q;
+        if (error){ chartStatus.textContent = `Error (${view}): ${error.message}`; destroyChart(); return; }
+
+        const rows = data || [];
+        if (!rows.length){ chartStatus.textContent = "Sin datos para ese rango."; destroyChart(); return; }
+
+        const labels = rows.map(r => String(r.kpi_date));
+        const values = rows.map(r => Number(r.ventas_total || 0));
+        makeChart(labels, values);
+        chartStatus.textContent = "OK.";
       }
-
-      chartTitle.textContent = `Ventas por Mes (${fromMonth.slice(0,7)} a ${toMonth.slice(0,7)})`;
-
-      const { data, error } = await q;
-
-      if (error){
-        chartStatus.textContent = `Error gráfico (${view}): ` + error.message;
-        destroyChart();
-        return;
-      }
-
-      const rows = data || [];
-      if (!rows.length){
-        chartStatus.textContent = "Sin datos para ese rango/filtro.";
-        destroyChart();
-        return;
-      }
-
-      const labels = rows.map(r => String(r.kpi_month || "").slice(0,7));
-      const values = rows.map(r => Number(r.ventas_total || 0));
-
-      makeChart(labels, values);
-      chartStatus.textContent = "OK.";
     }
 
     async function refreshAuthUI(){
@@ -502,11 +506,9 @@
         appCard.classList.remove("hide");
 
         const prof = await loadMyProfile();
-        if (prof?.operator_name){
-          userInfo.textContent = `Sesión: ${prof.operator_name} (${session.user.email})`;
-        } else {
-          userInfo.textContent = "Sesión: " + session.user.email;
-        }
+        userInfo.textContent = prof?.operator_name
+          ? `Sesión: ${prof.operator_name} (${session.user.email})`
+          : "Sesión: " + session.user.email;
 
         if (prof?.role === "supervisor"){
           supervisorZone.classList.remove("hide");
@@ -529,10 +531,7 @@
       const password = $("password").value;
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error){
-        loginMsg.textContent = "Error: " + error.message;
-        return;
-      }
+      if (error){ loginMsg.textContent = "Error: " + error.message; return; }
       await refreshAuthUI();
     });
 
