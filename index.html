@@ -54,15 +54,23 @@
       font-weight:700;
     }
     button:hover{filter:brightness(1.05)}
+    button:disabled{opacity:.6;cursor:not-allowed}
 
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center}
     .hide{display:none}
 
-    .kpisGrid{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+    .kpisGrid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:10px;
+    }
     .kpi{
       display:flex;justify-content:space-between;align-items:center;
-      padding:12px 12px;border-radius:14px;
-      background:rgba(255,255,255,.04);border:1px solid var(--border);
+      padding:12px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border);
     }
     .kpi strong{font-size:14px}
     .badge{
@@ -73,13 +81,28 @@
     .warn{color:var(--warn)}
     .bad{color:var(--bad)}
 
-    .sectionTitle{margin:18px 0 6px 0;font-weight:800;letter-spacing:.2px}
-    .chartWrap{
-      margin-top:10px;padding:12px;border-radius:14px;
-      background:rgba(255,255,255,.03);border:1px solid var(--border);
+    .sectionTitle{
+      margin:18px 0 6px 0;
+      font-weight:800;
+      letter-spacing:.2px;
     }
-    canvas{width:100%; height:280px;}
-    .inline2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .chartWrap{
+      margin-top:10px;
+      padding:12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--border);
+      position:relative; /* IMPORTANTE: estabiliza sizing */
+    }
+
+    /* IMPORTANTE: fuerza altura real del canvas */
+    #salesChart{ height:280px !important; width:100% !important; }
+
+    .inline2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
   </style>
 </head>
 
@@ -101,7 +124,9 @@
         <h3>RESULTADOS TMK - GEA GUATEMALA</h3>
         <div class="muted" id="userInfo"></div>
       </div>
-      <div><button id="btnLogout">Cerrar sesión</button></div>
+      <div>
+        <button id="btnLogout">Cerrar sesión</button>
+      </div>
     </div>
 
     <label>Fecha</label>
@@ -168,6 +193,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <script>
+    // ===== Supabase =====
     const SUPABASE_URL = "https://sjxqhlhvsdxgahpndxcc.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_IvVkMu9brJvX19qfqoBlxA_3cp2Qq85";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -196,6 +222,7 @@
 
     const ALL_CAMPAIGNS_VALUE = "__ALL__";
 
+    // fecha por defecto: hoy
     const today = new Date();
     const todayStr = today.toISOString().slice(0,10);
     kpiDate.value = todayStr;
@@ -208,6 +235,7 @@
     chartTo.value = todayStr;
     chartFrom.value = addMonths(todayStr, -12);
 
+    // ===== Helpers =====
     function fmt(n){
       if (n === null || n === undefined) return "—";
       if (typeof n === "number") {
@@ -255,8 +283,11 @@
       `;
     }
 
-    function monthStart(dateStr){ return dateStr.slice(0,7) + "-01"; }
+    function monthStart(dateStr){
+      return dateStr.slice(0,7) + "-01";
+    }
 
+    // ===== KPIs (tabla diaria / mensual) =====
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
 
@@ -265,7 +296,11 @@
       const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
       const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
 
-      const { data, error } = await sb.from(table).select("campaign").eq(dateField, dateVal);
+      const { data, error } = await sb
+        .from(table)
+        .select("campaign")
+        .eq(dateField, dateVal);
+
       if (error) { status.textContent = "Error campañas: " + error.message; return; }
 
       const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
@@ -274,6 +309,7 @@
         ...uniq.map(c => `<option value="${c}">${c}</option>`)
       ];
       campaignSel.innerHTML = options.join("");
+
       status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro.";
     }
 
@@ -292,21 +328,30 @@
         return;
       }
 
-      const { data, error } = await sb.from(table).select("*")
-        .eq(dateField, dateVal).eq("campaign", camp).limit(1);
+      const { data, error } = await sb
+        .from(table)
+        .select("*")
+        .eq(dateField, dateVal)
+        .eq("campaign", camp)
+        .limit(1);
 
       if (error) { status.textContent = "Error KPIs: " + error.message; return; }
-      if (!data || !data.length){ status.textContent = "No hay KPIs para ese filtro."; return; }
+      if (!data || data.length === 0){
+        status.textContent = "No hay KPIs para ese filtro.";
+        return;
+      }
 
       showKpis(data[0]);
       status.textContent = "OK.";
     }
 
+    // ===== Profile (operators) =====
     async function loadMyProfile(){
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.user) return null;
 
-      const { data, error } = await sb.from("operators")
+      const { data, error } = await sb
+        .from("operators")
         .select("operator_name, operator_code, role")
         .eq("auth_user_id", session.user.id)
         .limit(1);
@@ -317,7 +362,8 @@
 
     async function loadOperatorsList(){
       chartStatus.textContent = "Cargando operadores...";
-      const { data, error } = await sb.from("operators")
+      const { data, error } = await sb
+        .from("operators")
         .select("operator_code, operator_name, role")
         .eq("role", "operator")
         .order("operator_name", { ascending: true });
@@ -336,10 +382,22 @@
       chartStatus.textContent = rows.length ? "Operadores cargados." : "No hay operadores visibles (RLS).";
     }
 
-    // ===== Chart =====
+    // ===== Chart (FIX anti-loop + destroy seguro + escala estable) =====
     let chart = null;
 
-    function destroyChart(){ if(chart){ chart.destroy(); chart=null; } }
+    function destroyChart(){
+      try{
+        if (chart){
+          chart.destroy();
+          chart = null;
+        }
+      } catch(e){
+        chart = null;
+      }
+      const canvas = $("salesChart");
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+    }
 
     function niceStep(maxVal){
       if (maxVal <= 10) return 1;
@@ -364,10 +422,16 @@
 
       chart = new Chart(ctx, {
         type: "bar",
-        data: { labels, datasets: [{ label: "Ventas", data: values }] },
+        data: {
+          labels,
+          datasets: [{
+            label: "Ventas",
+            data: values
+          }]
+        },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: false, // ok porque fijamos altura con CSS + chartWrap relative
           plugins: { legend: { display: true } },
           scales: {
             y: {
@@ -384,121 +448,174 @@
       });
     }
 
+    let loadingChart = false;
+
     async function loadSalesChart(){
-      chartStatus.textContent = "Cargando gráfico...";
+      if (loadingChart) return;
+      loadingChart = true;
+      $("btnLoadChart").disabled = true;
 
-      const scope = scopeSel.value; // me | all | operator
-      const mode = chartModeSel.value; // monthly | daily
-      const myProf = await loadMyProfile();
-      const myCode = myProf?.operator_code;
+      try{
+        chartStatus.textContent = "Cargando gráfico...";
 
-      const camp = campaignSel.value;
-      const isAllCampaigns = (camp === ALL_CAMPAIGNS_VALUE);
+        const scope = scopeSel.value; // me | all | operator
+        const mode = chartModeSel.value; // monthly | daily
+        const myProf = await loadMyProfile();
+        const myCode = myProf?.operator_code;
 
-      const from = chartFrom.value;
-      const to = chartTo.value;
+        const camp = campaignSel.value;
+        const isAllCampaigns = (camp === ALL_CAMPAIGNS_VALUE);
 
-      const opCode = (scope === "all") ? null : ((scope === "operator") ? operatorPick.value : myCode);
+        const from = chartFrom.value;
+        const to = chartTo.value;
 
-      let view = "";
-      let q = null;
-
-      if (mode === "monthly"){
-        const fromM = monthStart(from);
-        const toM = monthStart(to);
-
-        if (scope === "all" && isAllCampaigns){
-          view = "kpi_monthly_global_total";
-          q = sb.from(view).select("kpi_month, ventas_total")
-            .gte("kpi_month", fromM).lte("kpi_month", toM)
-            .order("kpi_month", { ascending: true });
-
-        } else if (scope === "all" && !isAllCampaigns){
-          view = "kpi_monthly_global_total_campaign";
-          q = sb.from(view).select("kpi_month, ventas_total")
-            .eq("campaign", camp)
-            .gte("kpi_month", fromM).lte("kpi_month", toM)
-            .order("kpi_month", { ascending: true });
-
-        } else {
-          if (!opCode){ chartStatus.textContent = "Selecciona operador."; return; }
-
-          if (isAllCampaigns){
-            view = "kpi_monthly_operator_total";
-            q = sb.from(view).select("kpi_month, ventas_total")
-              .eq("operator_code", opCode)
-              .gte("kpi_month", fromM).lte("kpi_month", toM)
-              .order("kpi_month", { ascending: true });
-          } else {
-            view = "kpi_monthly_operator_total_campaign";
-            q = sb.from(view).select("kpi_month, ventas_total")
-              .eq("operator_code", opCode).eq("campaign", camp)
-              .gte("kpi_month", fromM).lte("kpi_month", toM)
-              .order("kpi_month", { ascending: true });
-          }
+        if (!from || !to){
+          chartStatus.textContent = "Selecciona Desde y Hasta.";
+          destroyChart();
+          return;
+        }
+        if (from > to){
+          chartStatus.textContent = "Rango inválido: Desde es mayor que Hasta.";
+          destroyChart();
+          return;
         }
 
-        chartTitle.textContent = `Ventas por Mes (${fromM.slice(0,7)} a ${toM.slice(0,7)})`;
+        const opCode =
+          (scope === "all") ? null :
+          (scope === "operator") ? operatorPick.value :
+          myCode;
 
-        const { data, error } = await q;
-        if (error){ chartStatus.textContent = `Error (${view}): ${error.message}`; destroyChart(); return; }
+        let view = "";
+        let q = null;
 
-        const rows = data || [];
-        if (!rows.length){ chartStatus.textContent = "Sin datos para ese rango."; destroyChart(); return; }
+        if (mode === "monthly"){
+          const fromM = monthStart(from);
+          const toM = monthStart(to);
 
-        const labels = rows.map(r => String(r.kpi_month).slice(0,7));
-        const values = rows.map(r => Number(r.ventas_total || 0));
-        makeChart(labels, values);
-        chartStatus.textContent = "OK.";
+          if (scope === "all" && isAllCampaigns){
+            view = "kpi_monthly_global_total";
+            q = sb.from(view).select("kpi_month, ventas_total")
+              .gte("kpi_month", fromM).lte("kpi_month", toM)
+              .order("kpi_month", { ascending: true });
 
-      } else {
-        // DAILY
-        if (scope === "all" && isAllCampaigns){
-          view = "kpi_daily_global_total";
-          q = sb.from(view).select("kpi_date, ventas_total")
-            .gte("kpi_date", from).lte("kpi_date", to)
-            .order("kpi_date", { ascending: true });
+          } else if (scope === "all" && !isAllCampaigns){
+            view = "kpi_monthly_global_total_campaign";
+            q = sb.from(view).select("kpi_month, ventas_total")
+              .eq("campaign", camp)
+              .gte("kpi_month", fromM).lte("kpi_month", toM)
+              .order("kpi_month", { ascending: true });
 
-        } else if (scope === "all" && !isAllCampaigns){
-          view = "kpi_daily_global_total_campaign";
-          q = sb.from(view).select("kpi_date, ventas_total")
-            .eq("campaign", camp)
-            .gte("kpi_date", from).lte("kpi_date", to)
-            .order("kpi_date", { ascending: true });
+          } else {
+            if (!opCode){
+              chartStatus.textContent = "Selecciona operador.";
+              destroyChart();
+              return;
+            }
+
+            if (isAllCampaigns){
+              view = "kpi_monthly_operator_total";
+              q = sb.from(view).select("kpi_month, ventas_total")
+                .eq("operator_code", opCode)
+                .gte("kpi_month", fromM).lte("kpi_month", toM)
+                .order("kpi_month", { ascending: true });
+            } else {
+              view = "kpi_monthly_operator_total_campaign";
+              q = sb.from(view).select("kpi_month, ventas_total")
+                .eq("operator_code", opCode).eq("campaign", camp)
+                .gte("kpi_month", fromM).lte("kpi_month", toM)
+                .order("kpi_month", { ascending: true });
+            }
+          }
+
+          chartTitle.textContent = `Ventas por Mes (${fromM.slice(0,7)} a ${toM.slice(0,7)})`;
+
+          const { data, error } = await q;
+          if (error){
+            chartStatus.textContent = `Error (${view}): ${error.message}`;
+            destroyChart();
+            return;
+          }
+
+          const rows = data || [];
+          if (!rows.length){
+            chartStatus.textContent = "Sin datos para ese rango/filtro.";
+            destroyChart();
+            return;
+          }
+
+          const labels = rows.map(r => String(r.kpi_month).slice(0,7));
+          const values = rows.map(r => Number(r.ventas_total || 0));
+
+          makeChart(labels, values);
+          chartStatus.textContent = "OK.";
 
         } else {
-          if (!opCode){ chartStatus.textContent = "Selecciona operador."; return; }
+          // DAILY
+          if (scope === "all" && isAllCampaigns){
+            view = "kpi_daily_global_total";
+            q = sb.from(view).select("kpi_date, ventas_total")
+              .gte("kpi_date", from).lte("kpi_date", to)
+              .order("kpi_date", { ascending: true });
 
-          if (isAllCampaigns){
-            view = "kpi_daily_operator_total";
+          } else if (scope === "all" && !isAllCampaigns){
+            view = "kpi_daily_global_total_campaign";
             q = sb.from(view).select("kpi_date, ventas_total")
-              .eq("operator_code", opCode)
+              .eq("campaign", camp)
               .gte("kpi_date", from).lte("kpi_date", to)
               .order("kpi_date", { ascending: true });
+
           } else {
-            view = "kpi_daily_operator_total_campaign";
-            q = sb.from(view).select("kpi_date, ventas_total")
-              .eq("operator_code", opCode).eq("campaign", camp)
-              .gte("kpi_date", from).lte("kpi_date", to)
-              .order("kpi_date", { ascending: true });
+            if (!opCode){
+              chartStatus.textContent = "Selecciona operador.";
+              destroyChart();
+              return;
+            }
+
+            if (isAllCampaigns){
+              view = "kpi_daily_operator_total";
+              q = sb.from(view).select("kpi_date, ventas_total")
+                .eq("operator_code", opCode)
+                .gte("kpi_date", from).lte("kpi_date", to)
+                .order("kpi_date", { ascending: true });
+            } else {
+              view = "kpi_daily_operator_total_campaign";
+              q = sb.from(view).select("kpi_date, ventas_total")
+                .eq("operator_code", opCode).eq("campaign", camp)
+                .gte("kpi_date", from).lte("kpi_date", to)
+                .order("kpi_date", { ascending: true });
+            }
           }
+
+          chartTitle.textContent = `Ventas por Día (${from} a ${to})`;
+
+          const { data, error } = await q;
+          if (error){
+            chartStatus.textContent = `Error (${view}): ${error.message}`;
+            destroyChart();
+            return;
+          }
+
+          const rows = data || [];
+          if (!rows.length){
+            chartStatus.textContent = "Sin datos para ese rango/filtro.";
+            destroyChart();
+            return;
+          }
+
+          const labels = rows.map(r => String(r.kpi_date));
+          const values = rows.map(r => Number(r.ventas_total || 0));
+
+          makeChart(labels, values);
+          chartStatus.textContent = "OK.";
         }
 
-        chartTitle.textContent = `Ventas por Día (${from} a ${to})`;
-
-        const { data, error } = await q;
-        if (error){ chartStatus.textContent = `Error (${view}): ${error.message}`; destroyChart(); return; }
-
-        const rows = data || [];
-        if (!rows.length){ chartStatus.textContent = "Sin datos para ese rango."; destroyChart(); return; }
-
-        const labels = rows.map(r => String(r.kpi_date));
-        const values = rows.map(r => Number(r.ventas_total || 0));
-        makeChart(labels, values);
-        chartStatus.textContent = "OK.";
+      } finally {
+        loadingChart = false;
+        $("btnLoadChart").disabled = false;
       }
     }
 
+    // ===== UI refresh =====
     async function refreshAuthUI(){
       const { data: { session } } = await sb.auth.getSession();
       if (session?.user){
@@ -506,10 +623,13 @@
         appCard.classList.remove("hide");
 
         const prof = await loadMyProfile();
-        userInfo.textContent = prof?.operator_name
-          ? `Sesión: ${prof.operator_name} (${session.user.email})`
-          : "Sesión: " + session.user.email;
+        if (prof?.operator_name){
+          userInfo.textContent = `Sesión: ${prof.operator_name} (${session.user.email})`;
+        } else {
+          userInfo.textContent = "Sesión: " + session.user.email;
+        }
 
+        // supervisor zone
         if (prof?.role === "supervisor"){
           supervisorZone.classList.remove("hide");
           await loadOperatorsList();
@@ -525,13 +645,17 @@
       }
     }
 
+    // ===== Events (ASEGÚRATE QUE SOLO EXISTAN UNA VEZ) =====
     $("btnLogin").addEventListener("click", async () => {
       loginMsg.textContent = "Ingresando...";
       const email = $("email").value.trim();
       const password = $("password").value;
 
       const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error){ loginMsg.textContent = "Error: " + error.message; return; }
+      if (error){
+        loginMsg.textContent = "Error: " + error.message;
+        return;
+      }
       await refreshAuthUI();
     });
 
@@ -548,6 +672,7 @@
       operatorPickWrap.classList.toggle("hide", scopeSel.value !== "operator");
     });
 
+    // IMPORTANTE: SOLO UNA VEZ
     $("btnLoadChart").addEventListener("click", loadSalesChart);
 
     refreshAuthUI();
