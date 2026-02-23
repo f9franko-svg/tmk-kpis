@@ -326,37 +326,90 @@
       status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro.";
     }
 
-    async function loadKpis(){
-      kpisDiv.innerHTML = "";
-      status.textContent = "Buscando KPIs...";
+async function loadKpis(){
+  kpisDiv.innerHTML = "";
+  status.textContent = "Buscando KPIs...";
 
-      const period = periodSel.value;
-      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
-      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
-      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
-      const camp = campaignSel.value;
+  const period = periodSel.value;
+  const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+  const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+  const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+  const camp = campaignSel.value;
 
-      if (camp === ALL_CAMPAIGNS_VALUE){
-        status.textContent = "Para KPIs selecciona una campaña específica (TODAS es solo para gráficas).";
-        return;
-      }
+  // ===== CASO 1: Diario + TODAS (lo dejamos bloqueado porque no tiene sentido sin agrupar)
+  if (period === "daily" && camp === ALL_CAMPAIGNS_VALUE){
+    status.textContent = "Para KPIs diarios selecciona una campaña específica (TODAS es solo para gráficas).";
+    return;
+  }
 
-      const { data, error } = await sb
-        .from(table)
-        .select("*")
-        .eq(dateField, dateVal)
-        .eq("campaign", camp)
-        .limit(1);
+  // ===== CASO 2: Mensual + TODAS (SUMA GLOBAL DEL MES por el usuario)
+  if (period === "monthly" && camp === ALL_CAMPAIGNS_VALUE){
+    const { data, error } = await sb
+      .from("kpi_monthly")
+      .select("registros, ventas, contactables_contact_cnt, efectivos_plus_cnt, contactables_eff_cnt")
+      .eq("kpi_month", dateVal);
 
-      if (error) { status.textContent = "Error KPIs: " + error.message; return; }
-      if (!data || data.length === 0){
-        status.textContent = "No hay KPIs para ese filtro.";
-        return;
-      }
-
-      showKpis(data[0]);
-      status.textContent = "OK.";
+    if (error){
+      status.textContent = "Error KPIs (TODAS): " + error.message;
+      return;
     }
+    const rows = data || [];
+    if (!rows.length){
+      status.textContent = "No hay KPIs para ese mes (o RLS no permite verlos).";
+      return;
+    }
+
+    // Sumatoria de todas las campañas visibles por RLS
+    const sum = rows.reduce((acc, r) => {
+      acc.registros += Number(r.registros || 0);
+      acc.ventas += Number(r.ventas || 0);
+      acc.contactables_contact_cnt += Number(r.contactables_contact_cnt || 0);
+      acc.efectivos_plus_cnt += Number(r.efectivos_plus_cnt || 0);
+      acc.contactables_eff_cnt += Number(r.contactables_eff_cnt || 0);
+      return acc;
+    }, {
+      registros: 0,
+      ventas: 0,
+      contactables_contact_cnt: 0,
+      efectivos_plus_cnt: 0,
+      contactables_eff_cnt: 0
+    });
+
+    // Recalcular ratios correctamente
+    const contactabilidad = sum.registros ? (sum.contactables_contact_cnt / sum.registros) : 0;
+    const efectividad = sum.contactables_eff_cnt ? (sum.efectivos_plus_cnt / sum.contactables_eff_cnt) : 0;
+    const rendimiento = sum.registros ? (sum.ventas / sum.registros) : 0;
+
+    const rowAgg = {
+      registros: sum.registros,
+      ventas: sum.ventas,
+      contactabilidad,
+      efectividad,
+      rendimiento
+    };
+
+    showKpis(rowAgg);
+    status.textContent = "OK (TODAS acumulado).";
+    return;
+  }
+
+  // ===== CASO 3: Normal (campaña específica)
+  const { data, error } = await sb
+    .from(table)
+    .select("*")
+    .eq(dateField, dateVal)
+    .eq("campaign", camp)
+    .limit(1);
+
+  if (error) { status.textContent = "Error KPIs: " + error.message; return; }
+  if (!data || data.length === 0){
+    status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
+    return;
+  }
+
+  showKpis(data[0]);
+  status.textContent = "OK.";
+}
 
     // ===== Profile (operators) =====
     async function loadMyProfile(){
@@ -692,6 +745,7 @@
   </script>
 </body>
 </html>
+
 
 
 
