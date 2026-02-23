@@ -209,6 +209,7 @@
     const kpiDate = $("kpiDate");
     const userInfo = $("userInfo");
     const periodSel = $("period");
+    const META_MENSUAL = 55;
 
     const supervisorZone = $("supervisorZone");
     const chartModeSel = $("chartMode");
@@ -250,7 +251,6 @@
       if (p >= warn) return "warn";
       return "bad";
     }
-const META_MENSUAL = 55;
     
     function showKpis(row){
   const reg = Number(row.registros ?? 0);
@@ -692,5 +692,6 @@ const META_MENSUAL = 55;
   </script>
 </body>
 </html>
+
 
 
