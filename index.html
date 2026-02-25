@@ -564,6 +564,51 @@ async function loadKpis(){
           const fromM = monthStart(from);
           const toM = monthStart(to);
 
+          const chartType = $("chartType").value;   // asegúrate que exista el id chartType
+
+// === NUEVO: Ranking por operador (solo cuando alcance = TODOS)
+if (chartType === "rank_ops" && scope === "all") {
+  // rango mensual
+  const { data, error } = await sb
+    .from("kpi_monthly_operator_ranking")
+    .select("operator_code, ventas_total, kpi_month")
+    .gte("kpi_month", fromM)
+    .lte("kpi_month", toM);
+
+  if (error){
+    chartStatus.textContent = "Error ranking: " + error.message;
+    destroyChart();
+    return;
+  }
+
+  const rows = data || [];
+  if (!rows.length){
+    chartStatus.textContent = "Sin datos para ese rango.";
+    destroyChart();
+    return;
+  }
+
+  // sumar ventas por operador en el rango
+  const mp = new Map();
+  for (const r of rows){
+    const op = r.operator_code;
+    const v = Number(r.ventas_total || 0);
+    mp.set(op, (mp.get(op) || 0) + v);
+  }
+
+  const sorted = [...mp.entries()]
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0, 20);
+
+  const labels = sorted.map(([op]) => op);
+  const values = sorted.map(([_,v]) => v);
+
+  chartTitle.textContent = "Ranking de ventas por operador (Top 20)";
+  makeChart(labels, values, { label: "Ventas", horizontal: true });
+  chartStatus.textContent = "OK.";
+  return; // IMPORTANTÍSIMO para que no siga al resto
+}
+          
           if (scope === "all" && isAllCampaigns){
             view = "kpi_monthly_global_total";
             q = sb.from(view).select("kpi_month, ventas_total")
@@ -751,6 +796,7 @@ async function loadKpis(){
   </script>
 </body>
 </html>
+
 
 
 
