@@ -92,11 +92,10 @@
       border-radius:14px;
       background:rgba(255,255,255,.03);
       border:1px solid var(--border);
-      position:relative; /* IMPORTANTE: estabiliza sizing */
+      position:relative;
     }
 
-    /* IMPORTANTE: fuerza altura real del canvas */
-    #salesChart{ height:280px !important; width:100% !important; }
+    #salesChart{ height:320px !important; width:100% !important; }
 
     .inline2{
       display:grid;
@@ -108,9 +107,9 @@
 
 <body>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-  <img src="GEA_Guatemala_TMK_logo_pro_v2.png" alt="Logo" style="height:34px;width:auto">
-  <h2 style="margin:0">TMK KPIs</h2>
-</div>
+    <img src="GEA_Guatemala_TMK_logo_pro_v2.png" alt="Logo" style="height:34px;width:auto">
+    <h2 style="margin:0">TMK KPIs</h2>
+  </div>
   <p class="muted">"Cree que puedes y estarás a mitad de camino"</p>
 
   <div id="loginCard" class="card">
@@ -157,7 +156,7 @@
       <select id="chartMode">
         <option value="monthly">Mes (comparación mes a mes)</option>
         <option value="daily">Día (tendencia día a día)</option>
-        <option value="rank_ops">Ranking (operadores)</option>   
+        <option value="rank_ops">Ranking (operadores)</option>
       </select>
 
       <label>Alcance</label>
@@ -196,7 +195,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-  
+
   <script>
     // ===== Supabase =====
     const SUPABASE_URL = "https://sjxqhlhvsdxgahpndxcc.supabase.co";
@@ -241,7 +240,6 @@
     chartTo.value = todayStr;
     chartFrom.value = addMonths(todayStr, -12);
 
-    // ===== Helpers =====
     function fmt(n){
       if (n === null || n === undefined) return "—";
       if (typeof n === "number") {
@@ -256,56 +254,55 @@
       if (p >= warn) return "warn";
       return "bad";
     }
-    
+
     function showKpis(row){
-  const reg = Number(row.registros ?? 0);
-  const ven = Number(row.ventas ?? 0);
+      const reg = Number(row.registros ?? 0);
+      const ven = Number(row.ventas ?? 0);
 
-  const contact = Number(row.contactabilidad ?? 0);
-  const efect  = Number(row.efectividad ?? 0);
-  const rend   = Number(row.rendimiento ?? 0);
+      const contact = Number(row.contactabilidad ?? 0);
+      const efect  = Number(row.efectividad ?? 0);
+      const rend   = Number(row.rendimiento ?? 0);
 
-  const clsContact = levelByPct(contact, 0.35, 0.25);
-  const clsEfect   = levelByPct(efect,  0.35, 0.20);
-  const clsRend    = levelByPct(rend,   0.20, 0.10);
+      const clsContact = levelByPct(contact, 0.35, 0.25);
+      const clsEfect   = levelByPct(efect,  0.35, 0.20);
+      const clsRend    = levelByPct(rend,   0.20, 0.10);
 
-  const items = [
-    ["Registros", reg, "neutral"],
-    ["Ventas", ven, "neutral"],
-    ["Contactabilidad", fmt(contact), clsContact],
-    ["Efectividad", fmt(efect), clsEfect],
-    ["Rendimiento", fmt(rend), clsRend],
-  ];
+      const items = [
+        ["Registros", reg, "neutral"],
+        ["Ventas", ven, "neutral"],
+        ["Contactabilidad", fmt(contact), clsContact],
+        ["Efectividad", fmt(efect), clsEfect],
+        ["Rendimiento", fmt(rend), clsRend],
+      ];
 
-  // Solo para "Mes (acumulado)"
-  if (periodSel.value === "monthly"){
-    const meta = META_MENSUAL;
-    const faltan = Math.max(0, meta - ven);
-    const pctMeta = meta > 0 ? (ven / meta) : 0;
+      if (periodSel.value === "monthly"){
+        const meta = META_MENSUAL;
+        const faltan = Math.max(0, meta - ven);
+        const pctMeta = meta > 0 ? (ven / meta) : 0;
+        const clsPct = levelByPct(pctMeta, 1.0, 0.7);
 
-    const clsPct = levelByPct(pctMeta, 1.0, 0.7); // >=100% good, >=70% warn
+        items.unshift(["Meta", meta, "neutral"]);
+        items.splice(2, 0, ["Faltan para meta", faltan, faltan === 0 ? "good" : "warn"]);
+        items.splice(3, 0, ["% Meta", fmt(pctMeta), clsPct]);
+      }
 
-    items.unshift(["Meta", meta, "neutral"]);
-    items.splice(2, 0, ["Faltan para meta", faltan, faltan === 0 ? "good" : "warn"]);
-    items.splice(3, 0, ["% Meta", fmt(pctMeta), clsPct]);
-  }
-
-  kpisDiv.innerHTML = `
-    <div class="kpisGrid">
-      ${items.map(([k,v,cls]) => `
-        <div class="kpi">
-          <strong>${k}</strong>
-          <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
+      kpisDiv.innerHTML = `
+        <div class="kpisGrid">
+          ${items.map(([k,v,cls]) => `
+            <div class="kpi">
+              <strong>${k}</strong>
+              <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
+            </div>
+          `).join("")}
         </div>
-      `).join("")}
-    </div>
-  `;
-}
+      `;
+    }
+
     function monthStart(dateStr){
       return dateStr.slice(0,7) + "-01";
     }
 
-    // ===== KPIs (tabla diaria / mensual) =====
+    // ===== KPIs =====
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
 
@@ -331,92 +328,79 @@
       status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro.";
     }
 
-async function loadKpis(){
-  kpisDiv.innerHTML = "";
-  status.textContent = "Buscando KPIs...";
+    async function loadKpis(){
+      kpisDiv.innerHTML = "";
+      status.textContent = "Buscando KPIs...";
 
-  const period = periodSel.value;
-  const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
-  const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
-  const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
-  const camp = campaignSel.value;
+      const period = periodSel.value;
+      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+      const camp = campaignSel.value;
 
-  // ===== CASO 1: Diario + TODAS (lo dejamos bloqueado porque no tiene sentido sin agrupar)
-  if (period === "daily" && camp === ALL_CAMPAIGNS_VALUE){
-    status.textContent = "Para KPIs diarios selecciona una campaña específica (TODAS es solo para gráficas).";
-    return;
-  }
+      if (period === "daily" && camp === ALL_CAMPAIGNS_VALUE){
+        status.textContent = "Para KPIs diarios selecciona una campaña específica (TODAS es solo para gráficas).";
+        return;
+      }
 
-  // ===== CASO 2: Mensual + TODAS (SUMA GLOBAL DEL MES por el usuario)
-  if (period === "monthly" && camp === ALL_CAMPAIGNS_VALUE){
-    const { data, error } = await sb
-      .from("kpi_monthly")
-      .select("registros, ventas, contactables_contact_cnt, efectivos_plus_cnt, contactables_eff_cnt")
-      .eq("kpi_month", dateVal);
+      if (period === "monthly" && camp === ALL_CAMPAIGNS_VALUE){
+        const { data, error } = await sb
+          .from("kpi_monthly")
+          .select("registros, ventas, contactables_contact_cnt, efectivos_plus_cnt, contactables_eff_cnt")
+          .eq("kpi_month", dateVal);
 
-    if (error){
-      status.textContent = "Error KPIs (TODAS): " + error.message;
-      return;
+        if (error){
+          status.textContent = "Error KPIs (TODAS): " + error.message;
+          return;
+        }
+        const rows = data || [];
+        if (!rows.length){
+          status.textContent = "No hay KPIs para ese mes (o RLS no permite verlos).";
+          return;
+        }
+
+        const sum = rows.reduce((acc, r) => {
+          acc.registros += Number(r.registros || 0);
+          acc.ventas += Number(r.ventas || 0);
+          acc.contactables_contact_cnt += Number(r.contactables_contact_cnt || 0);
+          acc.efectivos_plus_cnt += Number(r.efectivos_plus_cnt || 0);
+          acc.contactables_eff_cnt += Number(r.contactables_eff_cnt || 0);
+          return acc;
+        }, {
+          registros: 0,
+          ventas: 0,
+          contactables_contact_cnt: 0,
+          efectivos_plus_cnt: 0,
+          contactables_eff_cnt: 0
+        });
+
+        const contactabilidad = sum.registros ? (sum.contactables_contact_cnt / sum.registros) : 0;
+        const efectividad = sum.contactables_eff_cnt ? (sum.efectivos_plus_cnt / sum.contactables_eff_cnt) : 0;
+        const rendimiento = sum.registros ? (sum.ventas / sum.registros) : 0;
+
+        showKpis({ registros: sum.registros, ventas: sum.ventas, contactabilidad, efectividad, rendimiento });
+        status.textContent = "OK (TODAS acumulado).";
+        return;
+      }
+
+      const { data, error } = await sb
+        .from(table)
+        .select("*")
+        .eq(dateField, dateVal)
+        .eq("campaign", camp)
+        .limit(1);
+
+      if (error) { status.textContent = "Error KPIs: " + error.message; return; }
+      if (!data || data.length === 0){
+        status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
+        return;
+      }
+
+      showKpis(data[0]);
+      status.textContent = "OK.";
     }
-    const rows = data || [];
-    if (!rows.length){
-      status.textContent = "No hay KPIs para ese mes (o RLS no permite verlos).";
-      return;
-    }
 
-    // Sumatoria de todas las campañas visibles por RLS
-    const sum = rows.reduce((acc, r) => {
-      acc.registros += Number(r.registros || 0);
-      acc.ventas += Number(r.ventas || 0);
-      acc.contactables_contact_cnt += Number(r.contactables_contact_cnt || 0);
-      acc.efectivos_plus_cnt += Number(r.efectivos_plus_cnt || 0);
-      acc.contactables_eff_cnt += Number(r.contactables_eff_cnt || 0);
-      return acc;
-    }, {
-      registros: 0,
-      ventas: 0,
-      contactables_contact_cnt: 0,
-      efectivos_plus_cnt: 0,
-      contactables_eff_cnt: 0
-    });
-
-    // Recalcular ratios correctamente
-    const contactabilidad = sum.registros ? (sum.contactables_contact_cnt / sum.registros) : 0;
-    const efectividad = sum.contactables_eff_cnt ? (sum.efectivos_plus_cnt / sum.contactables_eff_cnt) : 0;
-    const rendimiento = sum.registros ? (sum.ventas / sum.registros) : 0;
-
-    const rowAgg = {
-      registros: sum.registros,
-      ventas: sum.ventas,
-      contactabilidad,
-      efectividad,
-      rendimiento
-    };
-
-    showKpis(rowAgg);
-    status.textContent = "OK (TODAS acumulado).";
-    return;
-  }
-
-  // ===== CASO 3: Normal (campaña específica)
-  const { data, error } = await sb
-    .from(table)
-    .select("*")
-    .eq(dateField, dateVal)
-    .eq("campaign", camp)
-    .limit(1);
-
-  if (error) { status.textContent = "Error KPIs: " + error.message; return; }
-  if (!data || data.length === 0){
-    status.textContent = "No hay KPIs para ese filtro (o RLS no permite verlos).";
-    return;
-  }
-
-  showKpis(data[0]);
-  status.textContent = "OK.";
-}
-
-    // ===== Profile (operators) =====
+    // ===== Profile =====
     async function loadMyProfile(){
       const { data: { session } } = await sb.auth.getSession();
       if (!session?.user) return null;
@@ -453,7 +437,7 @@ async function loadKpis(){
       chartStatus.textContent = rows.length ? "Operadores cargados." : "No hay operadores visibles (RLS).";
     }
 
-    // ===== Chart (FIX anti-loop + destroy seguro + escala estable) =====
+    // ===== Chart =====
     let chart = null;
 
     function destroyChart(){
@@ -470,56 +454,44 @@ async function loadKpis(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
     }
 
-    function niceStep(maxVal){
-      if (maxVal <= 10) return 1;
-      const rough = maxVal / 6;
-      const pow = Math.pow(10, Math.floor(Math.log10(rough)));
-      const n = rough / pow;
-      let m = 1;
-      if (n <= 1) m = 1;
-      else if (n <= 2) m = 2;
-      else if (n <= 5) m = 5;
-      else m = 10;
-      return m * pow;
-    }
+    function makeChart(labels, values, opts = {}){
+      const ctx = $("salesChart").getContext("2d");
+      destroyChart();
 
-   function makeChart(labels, values, opts = {}){
-  const ctx = $("salesChart").getContext("2d");
-  destroyChart();
+      Chart.register(ChartDataLabels);
 
-  Chart.register(ChartDataLabels);
+      const horizontal = !!opts.horizontal;
 
-  const horizontal = !!opts.horizontal;
-
-  chart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: opts.label || "Ventas",
-        data: values
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      indexAxis: horizontal ? "y" : "x",
-      plugins: {
-        legend: { display: true },
-        datalabels: {
-          anchor: horizontal ? "end" : "end",
-          align: horizontal ? "right" : "top",
-          formatter: (v) => (v ?? 0).toString(),
-          clamp: true
+      chart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: opts.label || "Ventas",
+            data: values
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: horizontal ? "y" : "x",
+          plugins: {
+            legend: { display: true },
+            datalabels: {
+              anchor: horizontal ? "end" : "end",
+              align: horizontal ? "right" : "top",
+              formatter: (v) => (v ?? 0).toString(),
+              clamp: true
+            }
+          },
+          scales: {
+            x: { beginAtZero: true },
+            y: { beginAtZero: true }
+          }
         }
-      },
-      scales: {
-        x: { beginAtZero: true },
-        y: { beginAtZero: true }
-      }
+      });
     }
-  });
-}
+
     let loadingChart = false;
 
     async function loadSalesChart(){
@@ -530,8 +502,8 @@ async function loadKpis(){
       try{
         chartStatus.textContent = "Cargando gráfico...";
 
-        const scope = scopeSel.value; // me | all | operator
-        const mode = chartModeSel.value; // monthly | daily
+        const scope = scopeSel.value;        // me | all | operator
+        const mode = chartModeSel.value;     // monthly | daily | rank_ops
         const myProf = await loadMyProfile();
         const myCode = myProf?.operator_code;
 
@@ -557,6 +529,75 @@ async function loadKpis(){
           (scope === "operator") ? operatorPick.value :
           myCode;
 
+        // ====== RANKING OPERADORES (SUPERVISOR / ALCANCE TODOS) ======
+        if (mode === "rank_ops"){
+          if (scope !== "all"){
+            chartStatus.textContent = "Ranking solo aplica con Alcance = Todos.";
+            destroyChart();
+            return;
+          }
+
+          const fromM = monthStart(from);
+          const toM = monthStart(to);
+
+          // 1) Traer ranking (por operator_code) en rango
+          const { data, error } = await sb
+            .from("kpi_monthly_operator_ranking")
+            .select("operator_code, ventas_total, kpi_month")
+            .gte("kpi_month", fromM)
+            .lte("kpi_month", toM);
+
+          if (error){
+            chartStatus.textContent = "Error ranking: " + error.message;
+            destroyChart();
+            return;
+          }
+
+          const rows = data || [];
+          if (!rows.length){
+            chartStatus.textContent = "Sin datos para ese rango.";
+            destroyChart();
+            return;
+          }
+
+          // 2) Sumar ventas por operador en el rango
+          const mp = new Map();
+          for (const r of rows){
+            const op = r.operator_code;
+            const v = Number(r.ventas_total || 0);
+            mp.set(op, (mp.get(op) || 0) + v);
+          }
+
+          // 3) (Opcional) mapear operator_code -> operator_name
+          const { data: ops, error: opsErr } = await sb
+            .from("operators")
+            .select("operator_code, operator_name")
+            .eq("role", "operator");
+
+          const nameMap = new Map();
+          if (!opsErr && ops){
+            for (const o of ops){
+              nameMap.set(o.operator_code, o.operator_name);
+            }
+          }
+
+          const sorted = [...mp.entries()]
+            .sort((a,b)=>b[1]-a[1])
+            .slice(0, 20);
+
+          const labels = sorted.map(([op]) => {
+            const nm = nameMap.get(op);
+            return nm ? `${nm} (${op})` : op;
+          });
+          const values = sorted.map(([_,v]) => v);
+
+          chartTitle.textContent = `Ranking ventas por operador (Top 20)`;
+          makeChart(labels, values, { label: "Ventas", horizontal: true });
+          chartStatus.textContent = "OK.";
+          return;
+        }
+
+        // ====== SERIES NORMAL (MONTHLY / DAILY) ======
         let view = "";
         let q = null;
 
@@ -564,51 +605,6 @@ async function loadKpis(){
           const fromM = monthStart(from);
           const toM = monthStart(to);
 
-          const chartType = $("chartType").value;   // asegúrate que exista el id chartType
-
-// === NUEVO: Ranking por operador (solo cuando alcance = TODOS)
-if (chartType === "rank_ops" && scope === "all") {
-  // rango mensual
-  const { data, error } = await sb
-    .from("kpi_monthly_operator_ranking")
-    .select("operator_code, ventas_total, kpi_month")
-    .gte("kpi_month", fromM)
-    .lte("kpi_month", toM);
-
-  if (error){
-    chartStatus.textContent = "Error ranking: " + error.message;
-    destroyChart();
-    return;
-  }
-
-  const rows = data || [];
-  if (!rows.length){
-    chartStatus.textContent = "Sin datos para ese rango.";
-    destroyChart();
-    return;
-  }
-
-  // sumar ventas por operador en el rango
-  const mp = new Map();
-  for (const r of rows){
-    const op = r.operator_code;
-    const v = Number(r.ventas_total || 0);
-    mp.set(op, (mp.get(op) || 0) + v);
-  }
-
-  const sorted = [...mp.entries()]
-    .sort((a,b)=>b[1]-a[1])
-    .slice(0, 20);
-
-  const labels = sorted.map(([op]) => op);
-  const values = sorted.map(([_,v]) => v);
-
-  chartTitle.textContent = "Ranking de ventas por operador (Top 20)";
-  makeChart(labels, values, { label: "Ventas", horizontal: true });
-  chartStatus.textContent = "OK.";
-  return; // IMPORTANTÍSIMO para que no siga al resto
-}
-          
           if (scope === "all" && isAllCampaigns){
             view = "kpi_monthly_global_total";
             q = sb.from(view).select("kpi_month, ventas_total")
@@ -653,21 +649,23 @@ if (chartType === "rank_ops" && scope === "all") {
             return;
           }
 
-          const rows = data || [];
-          if (!rows.length){
+          const rws = data || [];
+          if (!rws.length){
             chartStatus.textContent = "Sin datos para ese rango/filtro.";
             destroyChart();
             return;
           }
 
-          const labels = rows.map(r => String(r.kpi_month).slice(0,7));
-          const values = rows.map(r => Number(r.ventas_total || 0));
+          const labels = rws.map(r => String(r.kpi_month).slice(0,7));
+          const values = rws.map(r => Number(r.ventas_total || 0));
 
           makeChart(labels, values);
           chartStatus.textContent = "OK.";
+          return;
+        }
 
-        } else {
-          // DAILY
+        // DAILY
+        if (mode === "daily"){
           if (scope === "all" && isAllCampaigns){
             view = "kpi_daily_global_total";
             q = sb.from(view).select("kpi_date, ventas_total")
@@ -712,18 +710,19 @@ if (chartType === "rank_ops" && scope === "all") {
             return;
           }
 
-          const rows = data || [];
-          if (!rows.length){
+          const rws = data || [];
+          if (!rws.length){
             chartStatus.textContent = "Sin datos para ese rango/filtro.";
             destroyChart();
             return;
           }
 
-          const labels = rows.map(r => String(r.kpi_date));
-          const values = rows.map(r => Number(r.ventas_total || 0));
+          const labels = rws.map(r => String(r.kpi_date));
+          const values = rws.map(r => Number(r.ventas_total || 0));
 
           makeChart(labels, values);
           chartStatus.textContent = "OK.";
+          return;
         }
 
       } finally {
@@ -746,7 +745,6 @@ if (chartType === "rank_ops" && scope === "all") {
           userInfo.textContent = "Sesión: " + session.user.email;
         }
 
-        // supervisor zone
         if (prof?.role === "supervisor"){
           supervisorZone.classList.remove("hide");
           await loadOperatorsList();
@@ -762,7 +760,7 @@ if (chartType === "rank_ops" && scope === "all") {
       }
     }
 
-    // ===== Events (ASEGÚRATE QUE SOLO EXISTAN UNA VEZ) =====
+    // ===== Events =====
     $("btnLogin").addEventListener("click", async () => {
       loginMsg.textContent = "Ingresando...";
       const email = $("email").value.trim();
@@ -789,21 +787,9 @@ if (chartType === "rank_ops" && scope === "all") {
       operatorPickWrap.classList.toggle("hide", scopeSel.value !== "operator");
     });
 
-    // IMPORTANTE: SOLO UNA VEZ
     $("btnLoadChart").addEventListener("click", loadSalesChart);
 
     refreshAuthUI();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
