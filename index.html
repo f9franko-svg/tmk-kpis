@@ -483,42 +483,43 @@ async function loadKpis(){
       return m * pow;
     }
 
-    function makeChart(labels, values){
-      const ctx = $("salesChart").getContext("2d");
-      destroyChart();
+   function makeChart(labels, values, opts = {}){
+  const ctx = $("salesChart").getContext("2d");
+  destroyChart();
 
-      const maxVal = Math.max(...values, 0);
-      const step = niceStep(maxVal || 1);
-      const maxAxis = Math.ceil((maxVal || 1) / step) * step;
+  Chart.register(ChartDataLabels);
 
-      chart = new Chart(ctx, {
-        type: "bar",
-        data: {
-          labels,
-          datasets: [{
-            label: "Ventas",
-            data: values
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false, // ok porque fijamos altura con CSS + chartWrap relative
-          plugins: { legend: { display: true } },
-          scales: {
-            y: {
-              min: 0,
-              max: maxAxis,
-              ticks: {
-                stepSize: step,
-                precision: 0,
-                callback: (v) => Number(v).toLocaleString("es-GT")
-              }
-            }
-          }
+  const horizontal = !!opts.horizontal;
+
+  chart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: opts.label || "Ventas",
+        data: values
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: horizontal ? "y" : "x",
+      plugins: {
+        legend: { display: true },
+        datalabels: {
+          anchor: horizontal ? "end" : "end",
+          align: horizontal ? "right" : "top",
+          formatter: (v) => (v ?? 0).toString(),
+          clamp: true
         }
-      });
+      },
+      scales: {
+        x: { beginAtZero: true },
+        y: { beginAtZero: true }
+      }
     }
-
+  });
+}
     let loadingChart = false;
 
     async function loadSalesChart(){
@@ -750,6 +751,7 @@ async function loadKpis(){
   </script>
 </body>
 </html>
+
 
 
 
