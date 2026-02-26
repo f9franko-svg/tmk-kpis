@@ -484,6 +484,8 @@ async function loadHistory7Days(){
       if (period === "daily" && camp === ALL_CAMPAIGNS_VALUE){
         status.textContent = "Para KPIs diarios selecciona una campaña específica (TODAS es solo para gráficas).";
         return;
+
+         await loadHistory7Days();
       }
 
       if (period === "monthly" && camp === ALL_CAMPAIGNS_VALUE){
@@ -543,7 +545,7 @@ async function loadHistory7Days(){
       status.textContent = "OK.";
     }
 
-    await loadHistory7Days();
+   
     
     // ===== Profile =====
     async function loadMyProfile(){
@@ -941,6 +943,7 @@ async function loadHistory7Days(){
   </script>
 </body>
 </html>
+
 
 
 
