@@ -328,6 +328,123 @@
       return dateStr.slice(0,7) + "-01";
     }
 
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+function toISODate(d){
+  // d: Date
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function addDays(isoDate, days){
+  const d = new Date(isoDate + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return toISODate(d);
+}
+
+function fmtPct(n){
+  const v = Number(n || 0);
+  return (v * 100).toFixed(2) + "%";
+}
+
+function fmtInt(n){
+  return Number(n || 0).toLocaleString("es-GT");
+}
+
+// Agrega fallback si tu código no tiene ALL_CAMPAIGNS_VALUE definido
+const ALL_VAL = (typeof ALL_CAMPAIGNS_VALUE !== "undefined") ? ALL_CAMPAIGNS_VALUE : "__ALL__";
+
+/**
+ * Trae KPIs diarios para un rango y arma tabla.
+ * - Si campaña = TODAS => suma ventas/registros por día y recalcula rendimiento.
+ * - Si campaña específica => usa la fila del día (RLS ya limita al operador logueado).
+ */
+async function loadHistory7Days(){
+  historyBody.innerHTML = "";
+  deltaBox.textContent = "—";
+  historyStatus.textContent = "Cargando histórico...";
+
+  const endDate = kpiDate.value;            // fecha seleccionada
+  const startDate = addDays(endDate, -6);   // 7 días contando el endDate
+  const camp = campaignSel.value;
+
+  // Siempre consultamos kpi_daily para histórico diario (aunque tengas periodo mensual seleccionado)
+  let q = sb.from("kpi_daily")
+    .select("kpi_date, campaign, ventas, registros, rendimiento")
+    .gte("kpi_date", startDate)
+    .lte("kpi_date", endDate)
+    .order("kpi_date", { ascending: true });
+
+  // Si NO es TODAS, filtramos campaña
+  if (camp !== ALL_VAL) q = q.eq("campaign", camp);
+
+  const { data, error } = await q;
+
+  if (error){
+    historyStatus.textContent = "Error histórico: " + error.message;
+    return;
+  }
+
+  const rows = data || [];
+  if (!rows.length){
+    historyStatus.textContent = "Sin datos en los últimos 7 días (o RLS no permite verlos).";
+    return;
+  }
+
+  // Armado diario (agregación si es TODAS)
+  const byDay = new Map(); // kpi_date -> { ventas, registros }
+  for (const r of rows){
+    const d = r.kpi_date;
+    const ven = Number(r.ventas || 0);
+    const reg = Number(r.registros || 0);
+
+    if (!byDay.has(d)) byDay.set(d, { ventas: 0, registros: 0 });
+    const acc = byDay.get(d);
+    acc.ventas += ven;
+    acc.registros += reg;
+  }
+
+  const daily = [...byDay.entries()].map(([d, acc]) => ({
+    kpi_date: d,
+    ventas: acc.ventas,
+    registros: acc.registros,
+    rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0
+  }));
+
+  // Render tabla (último día abajo o arriba, tú decides)
+  // Yo lo dejo ascendente (más viejo arriba)
+  historyBody.innerHTML = daily.map(r => `
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06);">${r.kpi_date}</td>
+      <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtInt(r.ventas)}</td>
+      <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.rendimiento)}</td>
+    </tr>
+  `).join("");
+
+  // Comparación vs ayer (con la fecha seleccionada)
+  const todayRow = daily.find(x => x.kpi_date === endDate);
+  const yDate = addDays(endDate, -1);
+  const yRow = daily.find(x => x.kpi_date === yDate);
+
+  if (!todayRow){
+    deltaBox.textContent = "No hay dato para la fecha seleccionada en el histórico.";
+  } else if (!yRow){
+    deltaBox.textContent = `Hoy (${endDate}): Ventas ${fmtInt(todayRow.ventas)} | Rendimiento ${fmtPct(todayRow.rendimiento)} (sin dato de ayer)`;
+  } else {
+    const dVentas = todayRow.ventas - yRow.ventas;
+    const dRend = todayRow.rendimiento - yRow.rendimiento;
+
+    const signV = dVentas > 0 ? "+" : "";
+    const signR = dRend > 0 ? "+" : "";
+
+    deltaBox.textContent =
+      `Comparación vs ayer: Ventas ${signV}${fmtInt(dVentas)} | Rendimiento ${signR}${(dRend*100).toFixed(2)} pts`;
+  }
+
+  historyStatus.textContent = `OK. Rango: ${startDate} a ${endDate}`;
+}
+    
+
+    
     // ===== KPIs =====
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
@@ -819,5 +936,6 @@
   </script>
 </body>
 </html>
+
 
 
