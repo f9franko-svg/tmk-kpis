@@ -543,6 +543,8 @@ async function loadHistory7Days(){
       status.textContent = "OK.";
     }
 
+    await loadHistory7Days();
+    
     // ===== Profile =====
     async function loadMyProfile(){
       const { data: { session } } = await sb.auth.getSession();
@@ -936,6 +938,7 @@ async function loadHistory7Days(){
   </script>
 </body>
 </html>
+
 
 
 
