@@ -372,23 +372,29 @@
 
       // Agrega por día (si es TODAS suma campañas)
       const byDay = new Map();
-      for (const r of rows){
-        const d = r.kpi_date;
-        const ven = Number(r.ventas || 0);
-        const reg = Number(r.registros || 0);
+for (const r of rows){
+  const d = r.kpi_date;
+  const ven = Number(r.ventas || 0);
+  const reg = Number(r.registros || 0);
+  const contact = Number(r.contactabilidad || 0);
 
-        if (!byDay.has(d)) byDay.set(d, { ventas: 0, registros: 0 });
-        const acc = byDay.get(d);
-        acc.ventas += ven;
-        acc.registros += reg;
-      }
+  if (!byDay.has(d)) byDay.set(d, { ventas: 0, registros: 0, contact_num: 0 });
+  const acc = byDay.get(d);
 
-      const daily = [...byDay.entries()].map(([d, acc]) => ({
-        kpi_date: d,
-        ventas: acc.ventas,
-        registros: acc.registros,
-        rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0
-      }));
+  acc.ventas += ven;
+  acc.registros += reg;
+
+  // ponderación por registros (evita sesgo si hay varias campañas)
+  acc.contact_num += contact * reg;
+}
+
+const daily = [...byDay.entries()].map(([d, acc]) => ({
+  kpi_date: d,
+  ventas: acc.ventas,
+  registros: acc.registros,
+  rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
+  contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0
+}));
 
       historyBody.innerHTML = daily.map(r => `
         <tr>
@@ -633,5 +639,6 @@
   </script>
 </body>
 </html>
+
 
 
