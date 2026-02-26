@@ -283,52 +283,52 @@
     }
 
     function showKpis(row){
-      const reg = Number(row.registros ?? 0);
-      const ven = Number(row.ventas ?? 0);
+  const reg = Number(row.registros ?? 0);
+  const ven = Number(row.ventas ?? 0);
 
-      const contact = Number(row.contactabilidad ?? 0);
-      const efect  = Number(row.efectividad ?? 0);
-      const rend   = Number(row.rendimiento ?? 0);
+  const contact = Number(row.contactabilidad ?? 0);
+  const efect  = Number(row.efectividad ?? 0);
+  const rend   = Number(row.rendimiento ?? 0);
 
-      const clsContact = levelByPct(contact, 0.35, 0.25);
-      const clsEfect   = levelByPct(efect,  0.35, 0.20);
-      const clsRend    = levelByPct(rend,   0.20, 0.10);
+  const clsContact = levelByPct(contact, 0.35, 0.25);
+  const clsEfect   = levelByPct(efect,  0.35, 0.20);
+  const clsRend    = levelByPct(rend,   0.20, 0.10);
 
-      const gapSec = Number(row.avg_gap_sec ?? 0);
-      const gapMin = gapSec ? (gapSec / 60) : 0; 
-      items.push(["Tiempo entre llamadas", gapSec ? `${gapMin.toFixed(1)} min` : "—", "neutral"]);
-      
-      
-      const items = [
-        ["Registros", reg, "neutral"],
-        ["Ventas", ven, "neutral"],
-        ["Contactabilidad", fmt(contact), clsContact],
-        ["Efectividad", fmt(efect), clsEfect],
-        ["Rendimiento", fmt(rend), clsRend],
-      ];
+  const items = [
+    ["Registros", reg, "neutral"],
+    ["Ventas", ven, "neutral"],
+    ["Contactabilidad", fmt(contact), clsContact],
+    ["Efectividad", fmt(efect), clsEfect],
+    ["Rendimiento", fmt(rend), clsRend],
+  ];
 
-      if (periodSel.value === "monthly"){
-        const meta = META_MENSUAL;
-        const faltan = Math.max(0, meta - ven);
-        const pctMeta = meta > 0 ? (ven / meta) : 0;
-        const clsPct = levelByPct(pctMeta, 1.0, 0.7);
+  // KPI: Tiempo entre llamadas
+  const gapSec = Number(row.avg_gap_sec ?? 0);
+  const gapMin = gapSec ? (gapSec / 60) : 0;
+  items.push(["Tiempo entre llamadas", gapSec ? `${gapMin.toFixed(1)} min` : "—", "neutral"]);
 
-        items.unshift(["Meta", meta, "neutral"]);
-        items.splice(2, 0, ["Faltan para meta", faltan, faltan === 0 ? "good" : "warn"]);
-        items.splice(3, 0, ["% Meta", fmt(pctMeta), clsPct]);
-      }
+  if (periodSel.value === "monthly"){
+    const meta = META_MENSUAL;
+    const faltan = Math.max(0, meta - ven);
+    const pctMeta = meta > 0 ? (ven / meta) : 0;
+    const clsPct = levelByPct(pctMeta, 1.0, 0.7);
 
-      kpisDiv.innerHTML = `
-        <div class="kpisGrid">
-          ${items.map(([k,v,cls]) => `
-            <div class="kpi">
-              <strong>${k}</strong>
-              <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
-            </div>
-          `).join("")}
+    items.unshift(["Meta", meta, "neutral"]);
+    items.splice(2, 0, ["Faltan para meta", faltan, faltan === 0 ? "good" : "warn"]);
+    items.splice(3, 0, ["% Meta", fmt(pctMeta), clsPct]);
+  }
+
+  kpisDiv.innerHTML = `
+    <div class="kpisGrid">
+      ${items.map(([k,v,cls]) => `
+        <div class="kpi">
+          <strong>${k}</strong>
+          <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
         </div>
-      `;
-    }
+      `).join("")}
+    </div>
+  `;
+}
 
     function monthStart(dateStr){
       return dateStr.slice(0,7) + "-01";
@@ -645,6 +645,7 @@ const daily = [...byDay.entries()].map(([d, acc]) => ({
   </script>
 </body>
 </html>
+
 
 
 
