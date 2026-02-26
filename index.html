@@ -350,7 +350,7 @@
       const camp = campaignSel.value;
 
       let q = sb.from("kpi_daily")
-        .select("kpi_date, campaign, ventas, registros")
+        .select("kpi_date, campaign, ventas, registros, contactabilidad")
         .gte("kpi_date", startDate)
         .lte("kpi_date", endDate)
         .order("kpi_date", { ascending: true });
@@ -633,4 +633,5 @@
   </script>
 </body>
 </html>
+
 
