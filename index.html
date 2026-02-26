@@ -148,6 +148,28 @@
     <div id="kpis"></div>
     <div class="muted" id="status"></div>
 
+    <!-- ==== Mini histórico (últimos 7 días) ==== -->
+<div id="historyZone" class="card" style="margin-top:14px;">
+  <div class="sectionTitle">Mi histórico (últimos 7 días)</div>
+  <div class="muted" id="deltaBox">—</div>
+
+  <div style="overflow:auto;margin-top:10px;">
+    <table id="historyTable" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th style="text-align:left;padding:10px;border-bottom:1px solid var(--border);">Fecha</th>
+          <th style="text-align:right;padding:10px;border-bottom:1px solid var(--border);">Ventas</th>
+          <th style="text-align:right;padding:10px;border-bottom:1px solid var(--border);">Rendimiento</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+
+  <div class="muted" id="historyStatus" style="margin-top:8px;"></div>
+</div>
+
+    
     <!-- ==== Supervisor Zone ==== -->
     <div id="supervisorZone" class="hide">
       <div class="sectionTitle">Gráficas</div>
@@ -793,3 +815,4 @@
   </script>
 </body>
 </html>
+
