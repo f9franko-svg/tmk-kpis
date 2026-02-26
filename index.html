@@ -294,6 +294,11 @@
       const clsEfect   = levelByPct(efect,  0.35, 0.20);
       const clsRend    = levelByPct(rend,   0.20, 0.10);
 
+      const gapSec = Number(row.avg_gap_sec ?? 0);
+      const gapMin = gapSec ? (gapSec / 60) : 0; 
+      items.push(["Tiempo entre llamadas", gapSec ? `${gapMin.toFixed(1)} min` : "—", "neutral"]);
+      
+      
       const items = [
         ["Registros", reg, "neutral"],
         ["Ventas", ven, "neutral"],
@@ -640,6 +645,7 @@ const daily = [...byDay.entries()].map(([d, acc]) => ({
   </script>
 </body>
 </html>
+
 
 
 
