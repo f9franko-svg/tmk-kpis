@@ -928,6 +928,9 @@ async function loadHistory7Days(){
     kpiDate.addEventListener("change", loadCampaigns);
     periodSel.addEventListener("change", loadCampaigns);
 
+    kpiDate.addEventListener("change", () => loadHistory7Days());
+    campaignSel.addEventListener("change", () => loadHistory7Days());
+
     scopeSel.addEventListener("change", () => {
       operatorPickWrap.classList.toggle("hide", scopeSel.value !== "operator");
     });
@@ -938,6 +941,7 @@ async function loadHistory7Days(){
   </script>
 </body>
 </html>
+
 
 
 
