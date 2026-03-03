@@ -282,52 +282,59 @@
     }
 
     function showKpis(row){
-      const reg = Number(row.registros ?? 0);
-      const ven = Number(row.ventas ?? 0);
+  const reg = Number(row.registros ?? 0);
+  const ven = Number(row.ventas ?? 0);
 
-      const contact = Number(row.contactabilidad ?? 0);
-      const efect  = Number(row.efectividad ?? 0);
-      const rend   = Number(row.rendimiento ?? 0);
+  const contact = Number(row.contactabilidad ?? 0);
+  const efect  = Number(row.efectividad ?? 0);
+  const rend   = Number(row.rendimiento ?? 0);
 
-      const clsContact = levelByPct(contact, 0.35, 0.25);
-      const clsEfect   = levelByPct(efect,  0.35, 0.20);
-      const clsRend    = levelByPct(rend,   0.20, 0.10);
+  const clsContact = levelByPct(contact, 0.35, 0.25);
+  const clsEfect   = levelByPct(efect,  0.35, 0.20);
+  const clsRend    = levelByPct(rend,   0.20, 0.10);
 
-      const items = [
-        ["Registros", reg, "neutral"],
-        ["Ventas", ven, "neutral"],
-        ["Contactabilidad", fmt(contact), clsContact],
-        ["Efectividad", fmt(efect), clsEfect],
-        ["Rendimiento", fmt(rend), clsRend],
-      ];
+  // Tiempo entre llamadas
+  const gapSec = Number(row.avg_gap_sec ?? 0);
+  const gapMin = gapSec ? (gapSec / 60) : 0;
+  const gapTxt = gapSec ? `${gapMin.toFixed(1)} min` : "—";
 
-      // KPI: Tiempo entre llamadas
-      const gapSec = Number(row.avg_gap_sec ?? 0);
-      const gapMin = gapSec ? (gapSec / 60) : 0;
-      items.push(["Tiempo entre llamadas", gapSec ? `${gapMin.toFixed(1)} min` : "—", "neutral"]);
+  // META (solo aplica en mensual)
+  const isMonthly = (periodSel.value === "monthly");
+  const meta = isMonthly ? META_MENSUAL : null;
+  const pctMeta = isMonthly && meta > 0 ? (ven / meta) : null;
+  const faltan = isMonthly ? Math.max(0, meta - ven) : null;
 
-      if (periodSel.value === "monthly"){
-        const meta = META_MENSUAL;
-        const faltan = Math.max(0, meta - ven);
-        const pctMeta = meta > 0 ? (ven / meta) : 0;
-        const clsPct = levelByPct(pctMeta, 1.0, 0.7);
+  const clsPct = (pctMeta === null) ? "neutral" : levelByPct(pctMeta, 1.0, 0.7);
+  const clsFaltan = (faltan === 0) ? "good" : "warn";
 
-        items.unshift(["Meta", meta, "neutral"]);
-        items.splice(2, 0, ["Faltan para meta", faltan, faltan === 0 ? "good" : "warn"]);
-        items.splice(3, 0, ["% Meta", fmt(pctMeta), clsPct]);
-      }
+  // ✅ ORDEN EXACTO QUE PEDISTE
+  const items = [
+    ["Registros", reg, "neutral"],
+    ["Ventas", ven, "neutral"],
+  ];
 
-      kpisDiv.innerHTML = `
-        <div class="kpisGrid">
-          ${items.map(([k,v,cls]) => `
-            <div class="kpi">
-              <strong>${k}</strong>
-              <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
-            </div>
-          `).join("")}
+  if (isMonthly){
+    items.push(["Meta", meta, "neutral"]);
+    items.push(["% Meta", fmt(pctMeta), clsPct]);
+    items.push(["Faltan para meta", faltan, clsFaltan]);
+  }
+
+  items.push(["Contactabilidad", fmt(contact), clsContact]);
+  items.push(["Efectividad", fmt(efect), clsEfect]);
+  items.push(["Rendimiento", fmt(rend), clsRend]);
+  items.push(["Tiempo entre llamadas", gapTxt, "neutral"]);
+
+  kpisDiv.innerHTML = `
+    <div class="kpisGrid">
+      ${items.map(([k,v,cls]) => `
+        <div class="kpi">
+          <strong>${k}</strong>
+          <span class="badge ${cls === "neutral" ? "" : cls}">${v}</span>
         </div>
-      `;
-    }
+      `).join("")}
+    </div>
+  `;
+}
 
     function monthStart(dateStr){
       return dateStr.slice(0,7) + "-01";
@@ -926,3 +933,4 @@
   </script>
 </body>
 </html>
+
