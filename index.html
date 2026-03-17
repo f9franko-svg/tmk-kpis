@@ -353,104 +353,142 @@
     function fmtInt(n){ return Number(n || 0).toLocaleString("es-GT"); }
 
     async function loadHistory7Days(){
-      historyBody.innerHTML = "";
-      deltaBox.textContent = "—";
-      historyStatus.textContent = "Cargando histórico...";
+  historyBody.innerHTML = "";
+  deltaBox.textContent = "—";
+  historyStatus.textContent = "Cargando histórico...";
 
-      const endDate = kpiDate.value;
-      const startDate = addDays(endDate, -6);
-      const camp = campaignSel.value;
+  const endDate = kpiDate.value;
+  const startDate = addDays(endDate, -6);
+  const camp = campaignSel.value;
 
-      let q = sb.from("kpi_daily")
-        .select("kpi_date, campaign, ventas, registros, contactabilidad, avg_gap_sec")
-        .gte("kpi_date", startDate)
-        .lte("kpi_date", endDate)
-        .order("kpi_date", { ascending: true });
+  let q = sb.from("kpi_daily")
+    .select("kpi_date, campaign, ventas, registros, contactabilidad, avg_gap_sec")
+    .gte("kpi_date", startDate)
+    .lte("kpi_date", endDate)
+    .order("kpi_date", { ascending: true });
 
-      if (camp !== ALL_CAMPAIGNS_VALUE) q = q.eq("campaign", camp);
+  if (camp !== ALL_CAMPAIGNS_VALUE) q = q.eq("campaign", camp);
 
-      const { data, error } = await q;
-      if (error){
-        historyStatus.textContent = "Error histórico: " + error.message;
-        return;
-      }
-
-      const rows = data || [];
-      if (!rows.length){
-        historyStatus.textContent = "Sin datos en los últimos 7 días (o RLS no permite verlos).";
-        return;
-      }
-
-      const byDay = new Map();
-for (const r of rows){
-  const d = r.kpi_date;
-  const ven = Number(r.ventas || 0);
-  const reg = Number(r.registros || 0);
-  const contact = Number(r.contactabilidad || 0);
-  const gap = Number(r.avg_gap_sec || 0);
-
-  if (!byDay.has(d)) byDay.set(d, {
-    ventas: 0,
-    registros: 0,
-    contact_num: 0,    // contactabilidad ponderada por registros
-    gap_num: 0,        // gap ponderado por registros
-    gap_den: 0         // denominador (registros) para gap
-  });
-
-  const acc = byDay.get(d);
-  acc.ventas += ven;
-  acc.registros += reg;
-  acc.contact_num += contact * reg;
-
-  // Promedio ponderado de avg_gap_sec por registros (solo si hay gap > 0)
-  if (gap > 0 && reg > 0){
-    acc.gap_num += gap * reg;
-    acc.gap_den += reg;
+  const { data, error } = await q;
+  if (error){
+    historyStatus.textContent = "Error histórico: " + error.message;
+    return;
   }
-}
 
-      const daily = [...byDay.entries()].map(([d, acc]) => {
-  const avg_gap_sec = acc.gap_den ? (acc.gap_num / acc.gap_den) : 0;
-  return {
-    kpi_date: d,
-    ventas: acc.ventas,
-    registros: acc.registros,
-    rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
-    contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0,
-    avg_gap_sec
-  };
-});
+  const rows = data || [];
+  if (!rows.length){
+    historyStatus.textContent = "Sin datos en los últimos 7 días (o RLS no permite verlos).";
+    return;
+  }
 
-      historyBody.innerHTML = daily.map(r => `
-  <tr>
-    <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06);">${r.kpi_date}</td>
-    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtInt(r.ventas)}</td>
-    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.rendimiento)}</td>
-    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.contactabilidad)}</td>
-    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">
-      ${r.avg_gap_sec ? (r.avg_gap_sec/60).toFixed(1) + " min" : "—"}
-    </td>
-  </tr>
-`).join("");
+  let daily = [];
 
-      const todayRow = daily.find(x => x.kpi_date === endDate);
-      const yDate = addDays(endDate, -1);
-      const yRow = daily.find(x => x.kpi_date === yDate);
+  // ===========================
+  // CASO A: campaña específica
+  // ===========================
+  if (camp !== ALL_CAMPAIGNS_VALUE){
+    // Aquí NO agregamos, usamos cada fila tal cual.
+    daily = rows.map(r => {
+      const ven = Number(r.ventas || 0);
+      const reg = Number(r.registros || 0);
+      const contact = Number(r.contactabilidad || 0);
+      const gap = Number(r.avg_gap_sec || 0);
 
-      if (!todayRow){
-        deltaBox.textContent = "No hay dato para la fecha seleccionada en el histórico.";
-      } else if (!yRow){
-        deltaBox.textContent = `Hoy (${endDate}): Ventas ${fmtInt(todayRow.ventas)} | Rendimiento ${fmtPct(todayRow.rendimiento)} (sin dato de ayer)`;
-      } else {
-        const dVentas = todayRow.ventas - yRow.ventas;
-        const dRend = todayRow.rendimiento - yRow.rendimiento;
-        const signV = dVentas > 0 ? "+" : "";
-        const signR = dRend > 0 ? "+" : "";
-        deltaBox.textContent = `Comparación vs ayer: Ventas ${signV}${fmtInt(dVentas)} | Rendimiento ${signR}${(dRend*100).toFixed(2)} pts`;
+      return {
+        kpi_date: r.kpi_date,
+        ventas: ven,
+        registros: reg,
+        rendimiento: reg ? (ven / reg) : 0,
+        contactabilidad: contact,
+        avg_gap_sec: gap
+      };
+    });
+
+  // ===========================
+  // CASO B: TODAS (agregar por día)
+  // ===========================
+  } else {
+    const byDay = new Map();
+
+    for (const r of rows){
+      const d = r.kpi_date;
+      const ven = Number(r.ventas || 0);
+      const reg = Number(r.registros || 0);
+      const contact = Number(r.contactabilidad || 0);
+      const gap = Number(r.avg_gap_sec || 0);
+
+      if (!byDay.has(d)) byDay.set(d, {
+        ventas: 0,
+        registros: 0,
+        contact_num: 0,
+        gap_num: 0,
+        gap_den: 0
+      });
+
+      const acc = byDay.get(d);
+      acc.ventas += ven;
+      acc.registros += reg;
+
+      // ponderación por registros
+      acc.contact_num += contact * reg;
+
+      // promedio ponderado del gap solo si viene con valor
+      if (gap > 0 && reg > 0){
+        acc.gap_num += gap * reg;
+        acc.gap_den += reg;
       }
-
-      historyStatus.textContent = `OK. Rango: ${startDate} a ${endDate}`;
     }
+
+    daily = [...byDay.entries()]
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([d, acc]) => {
+        const avg_gap_sec = acc.gap_den ? (acc.gap_num / acc.gap_den) : 0;
+        return {
+          kpi_date: d,
+          ventas: acc.ventas,
+          registros: acc.registros,
+          rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
+          contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0,
+          avg_gap_sec
+        };
+      });
+  }
+
+  // Render tabla
+  historyBody.innerHTML = daily.map(r => `
+    <tr>
+      <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06);">${r.kpi_date}</td>
+      <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtInt(r.ventas)}</td>
+      <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.rendimiento)}</td>
+      <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.contactabilidad)}</td>
+      <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">
+        ${r.avg_gap_sec > 0 ? (r.avg_gap_sec/60).toFixed(1) + " min" : "—"}
+      </td>
+    </tr>
+  `).join("");
+
+  // Delta vs ayer (ventas + rendimiento)
+  const todayRow = daily.find(x => x.kpi_date === endDate);
+  const yDate = addDays(endDate, -1);
+  const yRow = daily.find(x => x.kpi_date === yDate);
+
+  if (!todayRow){
+    deltaBox.textContent = "No hay dato para la fecha seleccionada en el histórico.";
+  } else if (!yRow){
+    deltaBox.textContent = `Hoy (${endDate}): Ventas ${fmtInt(todayRow.ventas)} | Rendimiento ${fmtPct(todayRow.rendimiento)} (sin dato de ayer)`;
+  } else {
+    const dVentas = todayRow.ventas - yRow.ventas;
+    const dRend = todayRow.rendimiento - yRow.rendimiento;
+
+    const signV = dVentas > 0 ? "+" : "";
+    const signR = dRend > 0 ? "+" : "";
+
+    deltaBox.textContent =
+      `Comparación vs ayer: Ventas ${signV}${fmtInt(dVentas)} | Rendimiento ${signR}${(dRend*100).toFixed(2)} pts`;
+  }
+
+  historyStatus.textContent = `OK. Rango: ${startDate} a ${endDate}`;
+}
 
     // ===== KPIs =====
     async function loadCampaigns(){
