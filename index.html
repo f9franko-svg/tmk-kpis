@@ -422,13 +422,16 @@ for (const r of rows){
 });
 
       historyBody.innerHTML = daily.map(r => `
-        <tr>
-          <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06);">${r.kpi_date}</td>
-          <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtInt(r.ventas)}</td>
-          <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.rendimiento)}</td>
-          <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.contactabilidad)}</td>
-        </tr>
-      `).join("");
+  <tr>
+    <td style="padding:10px;border-bottom:1px solid rgba(255,255,255,.06);">${r.kpi_date}</td>
+    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtInt(r.ventas)}</td>
+    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.rendimiento)}</td>
+    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.contactabilidad)}</td>
+    <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">
+      ${r.avg_gap_sec ? (r.avg_gap_sec/60).toFixed(1) + " min" : "—"}
+    </td>
+  </tr>
+`).join("");
 
       const todayRow = daily.find(x => x.kpi_date === endDate);
       const yDate = addDays(endDate, -1);
