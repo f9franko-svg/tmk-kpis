@@ -409,13 +409,17 @@ for (const r of rows){
   }
 }
 
-      const daily = [...byDay.entries()].map(([d, acc]) => ({
-        kpi_date: d,
-        ventas: acc.ventas,
-        registros: acc.registros,
-        rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
-        contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0
-      }));
+      const daily = [...byDay.entries()].map(([d, acc]) => {
+  const avg_gap_sec = acc.gap_den ? (acc.gap_num / acc.gap_den) : 0;
+  return {
+    kpi_date: d,
+    ventas: acc.ventas,
+    registros: acc.registros,
+    rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
+    contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0,
+    avg_gap_sec
+  };
+});
 
       historyBody.innerHTML = daily.map(r => `
         <tr>
