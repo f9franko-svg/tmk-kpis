@@ -382,19 +382,32 @@
       }
 
       const byDay = new Map();
-      for (const r of rows){
-        const d = r.kpi_date;
-        const ven = Number(r.ventas || 0);
-        const reg = Number(r.registros || 0);
-        const contact = Number(r.contactabilidad || 0);
+for (const r of rows){
+  const d = r.kpi_date;
+  const ven = Number(r.ventas || 0);
+  const reg = Number(r.registros || 0);
+  const contact = Number(r.contactabilidad || 0);
+  const gap = Number(r.avg_gap_sec || 0);
 
-        if (!byDay.has(d)) byDay.set(d, { ventas: 0, registros: 0, contact_num: 0 });
-        const acc = byDay.get(d);
+  if (!byDay.has(d)) byDay.set(d, {
+    ventas: 0,
+    registros: 0,
+    contact_num: 0,    // contactabilidad ponderada por registros
+    gap_num: 0,        // gap ponderado por registros
+    gap_den: 0         // denominador (registros) para gap
+  });
 
-        acc.ventas += ven;
-        acc.registros += reg;
-        acc.contact_num += contact * reg;
-      }
+  const acc = byDay.get(d);
+  acc.ventas += ven;
+  acc.registros += reg;
+  acc.contact_num += contact * reg;
+
+  // Promedio ponderado de avg_gap_sec por registros (solo si hay gap > 0)
+  if (gap > 0 && reg > 0){
+    acc.gap_num += gap * reg;
+    acc.gap_den += reg;
+  }
+}
 
       const daily = [...byDay.entries()].map(([d, acc]) => ({
         kpi_date: d,
