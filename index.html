@@ -536,7 +536,7 @@
       if (period === "monthly" && camp === ALL_CAMPAIGNS_VALUE){
         const { data, error } = await sb
           .from("kpi_monthly")
-          .select("registros, ventas, contactables_contact_cnt, efectivos_plus_cnt, contactables_eff_cnt, avg_gap_sec")
+          .select("registros, ventas, contactables_contact_cnt, efectivos_plus_cnt, contactables_eff_cnt")
           .eq("kpi_month", dateVal);
 
         if (error){
