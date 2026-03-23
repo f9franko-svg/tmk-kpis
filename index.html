@@ -1007,7 +1007,8 @@ await loadOperatorsList(); // (pero ahora filtrado por país)
     kpiDate.addEventListener("change", loadCampaigns);
     periodSel.addEventListener("change", loadCampaigns);
     campaignSel.addEventListener("change", () => loadHistory7Days());
-
+    countryPick.addEventListener("change", loadOperatorsList);
+    
     scopeSel.addEventListener("change", () => {
       operatorPickWrap.classList.toggle("hide", scopeSel.value !== "operator");
     });
