@@ -630,26 +630,31 @@ async function loadCountries(){
     }
 
     async function loadOperatorsList(){
-      chartStatus.textContent = "Cargando operadores...";
-      const { data, error } = await sb
-        .from("operators")
-        .select("operator_code, operator_name, role")
-        .eq("role", "operator")
-        .order("operator_name", { ascending: true });
+  chartStatus.textContent = "Cargando operadores...";
+  const country = countryPick.value;
 
-      if (error) {
-        chartStatus.textContent = "Error leyendo operators (RLS): " + error.message;
-        operatorPick.innerHTML = "";
-        return;
-      }
+  let q = sb.from("operators")
+    .select("operator_code, operator_name, role, country")
+    .eq("role", "operator")
+    .order("operator_name", { ascending: true });
 
-      const rows = data || [];
-      operatorPick.innerHTML = rows.map(o =>
-        `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
-      ).join("");
+  if (country) q = q.eq("country", country);
 
-      chartStatus.textContent = rows.length ? "Operadores cargados." : "No hay operadores visibles (RLS).";
-    }
+  const { data, error } = await q;
+
+  if (error) {
+    chartStatus.textContent = "Error leyendo operators: " + error.message;
+    operatorPick.innerHTML = "";
+    return;
+  }
+
+  const rows = data || [];
+  operatorPick.innerHTML = rows.map(o =>
+    `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
+  ).join("");
+
+  chartStatus.textContent = rows.length ? "Operadores cargados." : "Sin operadores para ese país (o RLS).";
+}
 
     // =========================
     // ======  CHART FIX  ======
