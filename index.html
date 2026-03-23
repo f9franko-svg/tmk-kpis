@@ -521,6 +521,20 @@
       await loadHistory7Days();
     }
 
+async function loadCountries(){
+  const { data, error } = await sb
+    .from("operators")
+    .select("country")
+    .not("country","is",null);
+
+  if (error){
+    chartStatus.textContent = "Error cargando países: " + error.message;
+    return;
+  }
+  const uniq = [...new Set((data||[]).map(x=>x.country).filter(Boolean))].sort();
+  countryPick.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
+}
+    
     async function loadKpis(){
       kpisDiv.innerHTML = "";
       status.textContent = "Buscando KPIs...";
