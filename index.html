@@ -968,6 +968,9 @@ async function loadCountries(){
         }
 
         await loadCampaigns();
+await loadCountries();
+await loadOperatorsList(); // (pero ahora filtrado por país)
+        
       } else {
         loginCard.classList.remove("hide");
         appCard.classList.add("hide");
