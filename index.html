@@ -187,7 +187,6 @@
 
       <label>Alcance</label>
       <select id="scope">
-        <option value="me">Mi usuario</option>
         <option value="all">Todos</option>
         <option value="operator">Operador</option>
       </select>
@@ -223,6 +222,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
   <script>
+    // ===== Supabase =====
     const SUPABASE_URL = "https://sjxqhlhvsdxgahpndxcc.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_IvVkMu9brJvX19qfqoBlxA_3cp2Qq85";
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -245,6 +245,7 @@
     const deltaBox = $("deltaBox");
 
     const supervisorZone = $("supervisorZone");
+    const countryPick = $("countryPick");
     const chartModeSel = $("chartMode");
     const scopeSel = $("scope");
     const operatorPickWrap = $("operatorPickWrap");
@@ -253,10 +254,10 @@
     const chartTitle = $("chartTitle");
     const chartFrom = $("chartFrom");
     const chartTo = $("chartTo");
-    const countryPick = $("countryPick");
 
     const ALL_CAMPAIGNS_VALUE = "__ALL__";
 
+    // fecha por defecto
     const today = new Date();
     const todayStr = today.toISOString().slice(0,10);
     kpiDate.value = todayStr;
@@ -269,6 +270,7 @@
     chartTo.value = todayStr;
     chartFrom.value = addMonths(todayStr, -12);
 
+    // ===== Helpers UI =====
     function fmt(n){
       if (n === null || n === undefined) return "—";
       if (typeof n === "number") {
@@ -283,10 +285,6 @@
       return "bad";
     }
 
-    function monthStart(dateStr){
-      return dateStr.slice(0,7) + "-01";
-    }
-
     function showKpis(row){
       const reg = Number(row.registros ?? 0);
       const ven = Number(row.ventas ?? 0);
@@ -299,6 +297,7 @@
       const clsEfect   = levelByPct(efect,  0.35, 0.20);
       const clsRend    = levelByPct(rend,   0.20, 0.10);
 
+      // Tiempo entre llamadas
       const gapSec = Number(row.avg_gap_sec ?? 0);
       const gapMin = gapSec ? (gapSec / 60) : 0;
       const gapTxt = gapSec ? `${gapMin.toFixed(1)} min` : "—";
@@ -311,6 +310,7 @@
       const clsPct = (pctMeta === null) ? "neutral" : levelByPct(pctMeta, 1.0, 0.7);
       const clsFaltan = (faltan === 0) ? "good" : "warn";
 
+      // ORDEN
       const items = [
         ["Registros", reg, "neutral"],
         ["Ventas", ven, "neutral"],
@@ -339,117 +339,8 @@
       `;
     }
 
-    // ===== Profile =====
-    async function loadMyProfile(){
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session?.user) return null;
-
-      const { data, error } = await sb
-        .from("operators")
-        .select("operator_name, operator_code, role, country")
-        .eq("auth_user_id", session.user.id)
-        .limit(1);
-
-      if (error) return null;
-      return (data && data.length) ? data[0] : null;
-    }
-
-async function loadCountries(){
-  const { data, error } = await sb
-    .from("operator_directory")
-    .select("country")
-    .eq("is_active", true);
-
-  if (error){
-    chartStatus.textContent = "Error cargando países: " + error.message;
-    return;
-  }
-
-  const uniq = [...new Set((data||[]).map(x=>x.country).filter(Boolean))].sort();
-  countryPick.innerHTML = [`<option value="__ALL__">Todos</option>`]
-    .concat(uniq.map(c => `<option value="${c}">${c}</option>`))
-    .join("");
-      chartStatus.textContent = uniq.length ? "Países cargados." : "No hay países.";
-
-      // si ya hay país seleccionado, refresca lista operadores
-      await loadOperatorsList();
-    }
-
-    async function loadOperatorsList(){
-      const country = countryPick.value;
-      let q = sb.from("operators")
-        .select("operator_code, operator_name, role, country")
-        .eq("role", "operator")
-        .order("operator_name", { ascending: true });
-
-      if (country) q = q.eq("country", country);
-
-      const { data, error } = await q;
-
-      if (error){
-        chartStatus.textContent = "Error leyendo operators: " + error.message;
-        operatorPick.innerHTML = "";
-        return;
-      }
-
-      const rows = data || [];
-      operatorPick.innerHTML = rows.map(o =>
-        `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
-      ).join("");
-
-      chartStatus.textContent = rows.length ? "Operadores cargados." : "Sin operadores para ese país (o RLS).";
-    }
-
-    async function loadOperatorsListByCountry(country){
-  chartStatus.textContent = "Cargando operadores...";
-  let q = sb.from("operator_directory")
-    .select("operator_code, operator_name, country")
-    .eq("role","operator")
-    .eq("is_active", true)
-    .order("operator_name", { ascending: true });
-
-  if (country && country !== "__ALL__"){
-    q = q.eq("country", country);
-  }
-
-  const { data, error } = await q;
-  if (error){
-    chartStatus.textContent = "Error cargando operadores: " + error.message;
-    operatorPick.innerHTML = "";
-    return;
-  }
-
-  operatorPick.innerHTML = (data||[]).map(o =>
-    `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
-  ).join("");
-
-  chartStatus.textContent = (data||[]).length ? "Operadores cargados." : "Sin operadores para ese país.";
-}
-
-    // ===== Campaigns + KPIs =====
-    async function loadCampaigns(){
-      status.textContent = "Cargando campañas...";
-
-      const period = periodSel.value;
-      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
-      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
-      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
-
-      const { data, error } = await sb
-        .from(table)
-        .select("campaign")
-        .eq(dateField, dateVal);
-
-      if (error) { status.textContent = "Error campañas: " + error.message; return; }
-
-      const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
-      campaignSel.innerHTML = [
-        `<option value="${ALL_CAMPAIGNS_VALUE}">TODAS</option>`,
-        ...uniq.map(c => `<option value="${c}">${c}</option>`)
-      ].join("");
-
-      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro.";
-      await loadHistory7Days();
+    function monthStart(dateStr){
+      return dateStr.slice(0,7) + "-01";
     }
 
     // ===== Mini Histórico 7 días =====
@@ -492,54 +383,38 @@ async function loadCountries(){
         return;
       }
 
-      let daily = [];
+      const byDay = new Map();
+      for (const r of rows){
+        const d = r.kpi_date;
+        const ven = Number(r.ventas || 0);
+        const reg = Number(r.registros || 0);
+        const contact = Number(r.contactabilidad || 0);
+        const gap = Number(r.avg_gap_sec || 0);
 
-      if (camp !== ALL_CAMPAIGNS_VALUE){
-        daily = rows.map(r => {
-          const ven = Number(r.ventas || 0);
-          const reg = Number(r.registros || 0);
-          return {
-            kpi_date: r.kpi_date,
-            ventas: ven,
-            registros: reg,
-            rendimiento: reg ? (ven / reg) : 0,
-            contactabilidad: Number(r.contactabilidad || 0),
-            avg_gap_sec: Number(r.avg_gap_sec || 0)
-          };
-        });
-      } else {
-        const byDay = new Map();
-        for (const r of rows){
-          const d = r.kpi_date;
-          const ven = Number(r.ventas || 0);
-          const reg = Number(r.registros || 0);
-          const contact = Number(r.contactabilidad || 0);
-          const gap = Number(r.avg_gap_sec || 0);
+        if (!byDay.has(d)) byDay.set(d, { ventas:0, registros:0, contact_num:0, gap_num:0, gap_den:0 });
+        const acc = byDay.get(d);
 
-          if (!byDay.has(d)) byDay.set(d, { ventas:0, registros:0, contact_num:0, gap_num:0, gap_den:0 });
-          const acc = byDay.get(d);
+        acc.ventas += ven;
+        acc.registros += reg;
+        acc.contact_num += contact * reg;
 
-          acc.ventas += ven;
-          acc.registros += reg;
-          acc.contact_num += contact * reg;
-
-          if (gap > 0 && reg > 0){
-            acc.gap_num += gap * reg;
-            acc.gap_den += reg;
-          }
+        if (gap > 0 && reg > 0){
+          acc.gap_num += gap * reg;
+          acc.gap_den += reg;
         }
-
-        daily = [...byDay.entries()]
-          .sort((a,b) => a[0].localeCompare(b[0]))
-          .map(([d, acc]) => ({
-            kpi_date: d,
-            ventas: acc.ventas,
-            registros: acc.registros,
-            rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
-            contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0,
-            avg_gap_sec: acc.gap_den ? (acc.gap_num / acc.gap_den) : 0
-          }));
       }
+
+      const daily = [...byDay.entries()].map(([d, acc]) => {
+        const avg_gap_sec = acc.gap_den ? (acc.gap_num / acc.gap_den) : 0;
+        return {
+          kpi_date: d,
+          ventas: acc.ventas,
+          registros: acc.registros,
+          rendimiento: acc.registros ? (acc.ventas / acc.registros) : 0,
+          contactabilidad: acc.registros ? (acc.contact_num / acc.registros) : 0,
+          avg_gap_sec
+        };
+      });
 
       historyBody.innerHTML = daily.map(r => `
         <tr>
@@ -548,28 +423,39 @@ async function loadCountries(){
           <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.rendimiento)}</td>
           <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">${fmtPct(r.contactabilidad)}</td>
           <td style="padding:10px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);">
-            ${r.avg_gap_sec > 0 ? (r.avg_gap_sec/60).toFixed(1) + " min" : "—"}
+            ${r.avg_gap_sec ? (r.avg_gap_sec/60).toFixed(1) + " min" : "—"}
           </td>
         </tr>
       `).join("");
 
-      const todayRow = daily.find(x => x.kpi_date === endDate);
-      const yDate = addDays(endDate, -1);
-      const yRow = daily.find(x => x.kpi_date === yDate);
-
-      if (!todayRow){
-        deltaBox.textContent = "No hay dato para la fecha seleccionada en el histórico.";
-      } else if (!yRow){
-        deltaBox.textContent = `Hoy (${endDate}): Ventas ${fmtInt(todayRow.ventas)} | Rendimiento ${fmtPct(todayRow.rendimiento)} (sin dato de ayer)`;
-      } else {
-        const dVentas = todayRow.ventas - yRow.ventas;
-        const dRend = todayRow.rendimiento - yRow.rendimiento;
-        const signV = dVentas > 0 ? "+" : "";
-        const signR = dRend > 0 ? "+" : "";
-        deltaBox.textContent = `Comparación vs ayer: Ventas ${signV}${fmtInt(dVentas)} | Rendimiento ${signR}${(dRend*100).toFixed(2)} pts`;
-      }
-
       historyStatus.textContent = `OK. Rango: ${startDate} a ${endDate}`;
+    }
+
+    // ===== KPIs (operador) =====
+    async function loadCampaigns(){
+      status.textContent = "Cargando campañas...";
+
+      const period = periodSel.value;
+      const dateVal = (period === "daily") ? kpiDate.value : monthStart(kpiDate.value);
+      const table = (period === "daily") ? "kpi_daily" : "kpi_monthly";
+      const dateField = (period === "daily") ? "kpi_date" : "kpi_month";
+
+      const { data, error } = await sb
+        .from(table)
+        .select("campaign")
+        .eq(dateField, dateVal);
+
+      if (error) { status.textContent = "Error campañas: " + error.message; return; }
+
+      const uniq = [...new Set((data || []).map(x => x.campaign))].sort();
+      const options = [
+        `<option value="${ALL_CAMPAIGNS_VALUE}">TODAS</option>`,
+        ...uniq.map(c => `<option value="${c}">${c}</option>`)
+      ];
+      campaignSel.innerHTML = options.join("");
+
+      status.textContent = uniq.length ? "Campañas cargadas." : "No hay campañas para ese filtro.";
+      await loadHistory7Days();
     }
 
     async function loadKpis(){
@@ -588,6 +474,7 @@ async function loadCountries(){
         return;
       }
 
+      // Mensual + TODAS: agregación (sin avg_gap mensual aquí)
       if (period === "monthly" && camp === ALL_CAMPAIGNS_VALUE){
         const { data, error } = await sb
           .from("kpi_monthly")
@@ -620,7 +507,7 @@ async function loadCountries(){
         const efectividad = sum.contactables_eff_cnt ? (sum.efectivos_plus_cnt / sum.contactables_eff_cnt) : 0;
         const rendimiento = sum.registros ? (sum.ventas / sum.registros) : 0;
 
-        showKpis({ registros: sum.registros, ventas: sum.ventas, contactabilidad, efectividad, rendimiento });
+        showKpis({ registros: sum.registros, ventas: sum.ventas, contactabilidad, efectividad, rendimiento, avg_gap_sec: 0 });
         status.textContent = "OK (TODAS acumulado).";
         await loadHistory7Days();
         return;
@@ -645,7 +532,69 @@ async function loadCountries(){
       await loadHistory7Days();
     }
 
-    // ===== Charts =====
+    // ===== Profile (auth mapping) =====
+    async function loadMyProfile(){
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session?.user) return null;
+
+      const { data, error } = await sb
+        .from("operators")
+        .select("operator_name, operator_code, role")
+        .eq("auth_user_id", session.user.id)
+        .limit(1);
+
+      if (error) return null;
+      return (data && data.length) ? data[0] : null;
+    }
+
+    // ===== Supervisor: países desde operator_directory =====
+    async function loadCountries(){
+      chartStatus.textContent = "Cargando países...";
+      const { data, error } = await sb
+        .from("operator_directory")
+        .select("country")
+        .not("country","is",null);
+
+      if (error){
+        chartStatus.textContent = "Error cargando países: " + error.message;
+        return;
+      }
+      const uniq = [...new Set((data||[]).map(x=>x.country).filter(Boolean))].sort();
+      countryPick.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
+      chartStatus.textContent = uniq.length ? "Países cargados." : "No hay países en operator_directory.";
+    }
+
+    // ===== Supervisor: operadores por país desde operator_directory =====
+    async function loadOperatorsList(){
+      chartStatus.textContent = "Cargando operadores...";
+      const country = countryPick.value;
+
+      let q = sb.from("operator_directory")
+        .select("operator_code, operator_name, role, country")
+        .eq("role","operator")
+        .order("operator_name", { ascending: true });
+
+      if (country) q = q.eq("country", country);
+
+      const { data, error } = await q;
+
+      if (error) {
+        chartStatus.textContent = "Error leyendo operator_directory: " + error.message;
+        operatorPick.innerHTML = "";
+        return;
+      }
+
+      const rows = data || [];
+      operatorPick.innerHTML = rows.map(o =>
+        `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
+      ).join("");
+
+      chartStatus.textContent = rows.length ? "Operadores cargados." : "No hay operadores para ese país.";
+    }
+
+    // =========================
+    // ======  CHART FIX  ======
+    // =========================
     let chart = null;
     let chartsRegistered = false;
 
@@ -656,6 +605,7 @@ async function loadCountries(){
           chart = null;
         }
       }catch(e){ chart = null; }
+
       const canvas = $("salesChart");
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -676,7 +626,10 @@ async function loadCountries(){
         type: "bar",
         data: {
           labels,
-          datasets: [{ label: opts.label || "Ventas", data: values }]
+          datasets: [{
+            label: opts.label || "Ventas",
+            data: values
+          }]
         },
         options: {
           responsive: true,
@@ -716,10 +669,9 @@ async function loadCountries(){
         }
 
         const mode = chartModeSel.value;  // monthly | daily | rank_ops
-        const scope = scopeSel.value;     // me | all | operator
+        const scope = scopeSel.value;     // all | operator
         const camp = campaignSel.value;
         const isAllCampaigns = (camp === ALL_CAMPAIGNS_VALUE);
-
         const country = countryPick.value;
 
         const from = chartFrom.value;
@@ -736,30 +688,26 @@ async function loadCountries(){
           return;
         }
 
-        const myCode = prof.operator_code;
-        const opCode =
-          (scope === "all") ? null :
-          (scope === "operator") ? operatorPick.value :
-          myCode;
+        const opCode = (scope === "operator") ? operatorPick.value : null;
 
-        // ===== Ranking por país
+        // Ranking por país
         if (mode === "rank_ops"){
           if (scope !== "all"){
             chartStatus.textContent = "Ranking solo aplica con Alcance = Todos.";
             destroyChart();
             return;
           }
+
           const fromM = monthStart(from);
           const toM = monthStart(to);
 
-          let q = sb.from("kpi_monthly_operator_ranking_country")
-            .select("operator_code, operator_name, country, kpi_month, ventas_total")
+          const { data, error } = await sb
+            .from("kpi_monthly_operator_ranking_country")
+            .select("kpi_month, country, operator_code, operator_name, ventas_total")
+            .eq("country", country)
             .gte("kpi_month", fromM)
             .lte("kpi_month", toM);
 
-          if (country) q = q.eq("country", country);
-
-          const { data, error } = await q;
           if (error){
             chartStatus.textContent = "Error ranking: " + error.message;
             destroyChart();
@@ -790,73 +738,38 @@ async function loadCountries(){
           });
           const values = sorted.map(([_,v]) => v);
 
-          chartTitle.textContent = `Ranking ventas (${country || "Todos"}) Top 20`;
+          chartTitle.textContent = `Ranking ventas (${country}) Top 20`;
           makeChart(labels, values, { label: "Ventas", horizontal: true });
           chartStatus.textContent = "OK.";
           return;
         }
 
-        // ===== Series mensual/diaria (con país cuando scope=all)
-        let view = "";
-        let q = null;
-
-        if (mode === "monthly"){
+        // Series mensuales por país (global)
+        if (mode === "monthly" && scope === "all"){
           const fromM = monthStart(from);
           const toM = monthStart(to);
 
-          if (scope === "all" && isAllCampaigns){
-            view = "kpi_monthly_global_total_country";
-            q = sb.from(view).select("kpi_month, country, ventas_total")
-              .eq("country", country)
-              .gte("kpi_month", fromM).lte("kpi_month", toM)
-              .order("kpi_month", { ascending: true });
-
-          } else if (scope === "all" && !isAllCampaigns){
-            view = "kpi_monthly_global_total_country_campaign";
-            q = sb.from(view).select("kpi_month, campaign, country, ventas_total")
-              .eq("country", country)
-              .eq("campaign", camp)
-              .gte("kpi_month", fromM).lte("kpi_month", toM)
-              .order("kpi_month", { ascending: true });
-
-          } else {
-            if (!opCode){
-              chartStatus.textContent = "Selecciona operador.";
-              destroyChart();
-              return;
-            }
-
-            // tus vistas actuales por operador (sin país) siguen igual
-            if (isAllCampaigns){
-              view = "kpi_monthly_operator_total";
-              q = sb.from(view).select("kpi_month, ventas_total")
-                .eq("operator_code", opCode)
-                .gte("kpi_month", fromM).lte("kpi_month", toM)
-                .order("kpi_month", { ascending: true });
-            } else {
-              view = "kpi_monthly_operator_total_campaign";
-              q = sb.from(view).select("kpi_month, ventas_total")
-                .eq("operator_code", opCode).eq("campaign", camp)
-                .gte("kpi_month", fromM).lte("kpi_month", toM)
-                .order("kpi_month", { ascending: true });
-            }
-          }
+          let q = sb.from("kpi_monthly_global_total_country")
+            .select("kpi_month, country, ventas_total")
+            .eq("country", country)
+            .gte("kpi_month", fromM).lte("kpi_month", toM)
+            .order("kpi_month", { ascending: true });
 
           const { data, error } = await q;
           if (error){
-            chartStatus.textContent = `Error (${view}): ${error.message}`;
+            chartStatus.textContent = "Error mensual país: " + error.message;
             destroyChart();
             return;
           }
 
           const rows = data || [];
           if (!rows.length){
-            chartStatus.textContent = "Sin datos para ese rango/filtro.";
+            chartStatus.textContent = "Sin datos para ese país/rango.";
             destroyChart();
             return;
           }
 
-          chartTitle.textContent = `Ventas por Mes (${fromM.slice(0,7)} a ${toM.slice(0,7)})`;
+          chartTitle.textContent = `Ventas por Mes (${country})`;
           const labels = rows.map(r => String(r.kpi_month).slice(0,7));
           const values = rows.map(r => Number(r.ventas_total || 0));
           makeChart(labels, values, { label: "Ventas" });
@@ -864,60 +777,29 @@ async function loadCountries(){
           return;
         }
 
-        // DAILY
-        if (mode === "daily"){
-          if (scope === "all" && isAllCampaigns){
-            view = "kpi_daily_global_total_country";
-            q = sb.from(view).select("kpi_date, country, ventas_total")
-              .eq("country", country)
-              .gte("kpi_date", from).lte("kpi_date", to)
-              .order("kpi_date", { ascending: true });
-
-          } else if (scope === "all" && !isAllCampaigns){
-            view = "kpi_daily_global_total_country_campaign";
-            q = sb.from(view).select("kpi_date, campaign, country, ventas_total")
-              .eq("country", country)
-              .eq("campaign", camp)
-              .gte("kpi_date", from).lte("kpi_date", to)
-              .order("kpi_date", { ascending: true });
-
-          } else {
-            if (!opCode){
-              chartStatus.textContent = "Selecciona operador.";
-              destroyChart();
-              return;
-            }
-
-            if (isAllCampaigns){
-              view = "kpi_daily_operator_total";
-              q = sb.from(view).select("kpi_date, ventas_total")
-                .eq("operator_code", opCode)
-                .gte("kpi_date", from).lte("kpi_date", to)
-                .order("kpi_date", { ascending: true });
-            } else {
-              view = "kpi_daily_operator_total_campaign";
-              q = sb.from(view).select("kpi_date, ventas_total")
-                .eq("operator_code", opCode).eq("campaign", camp)
-                .gte("kpi_date", from).lte("kpi_date", to)
-                .order("kpi_date", { ascending: true });
-            }
-          }
+        // Series diarias por país (global)
+        if (mode === "daily" && scope === "all"){
+          let q = sb.from("kpi_daily_global_total_country")
+            .select("kpi_date, country, ventas_total")
+            .eq("country", country)
+            .gte("kpi_date", from).lte("kpi_date", to)
+            .order("kpi_date", { ascending: true });
 
           const { data, error } = await q;
           if (error){
-            chartStatus.textContent = `Error (${view}): ${error.message}`;
+            chartStatus.textContent = "Error diario país: " + error.message;
             destroyChart();
             return;
           }
 
           const rows = data || [];
           if (!rows.length){
-            chartStatus.textContent = "Sin datos para ese rango/filtro.";
+            chartStatus.textContent = "Sin datos para ese país/rango.";
             destroyChart();
             return;
           }
 
-          chartTitle.textContent = `Ventas por Día (${from} a ${to})`;
+          chartTitle.textContent = `Ventas por Día (${country})`;
           const labels = rows.map(r => String(r.kpi_date));
           const values = rows.map(r => Number(r.ventas_total || 0));
           makeChart(labels, values, { label: "Ventas" });
@@ -925,6 +807,80 @@ async function loadCountries(){
           return;
         }
 
+        // Operador específico (no por país: usa tus vistas existentes por operador)
+        if (scope === "operator"){
+          if (!opCode){
+            chartStatus.textContent = "Selecciona operador.";
+            return;
+          }
+
+          if (mode === "monthly"){
+            const fromM = monthStart(from);
+            const toM = monthStart(to);
+
+            let view = isAllCampaigns ? "kpi_monthly_operator_total" : "kpi_monthly_operator_total_campaign";
+            let q = sb.from(view).select("kpi_month, ventas_total")
+              .eq("operator_code", opCode)
+              .gte("kpi_month", fromM).lte("kpi_month", toM)
+              .order("kpi_month", { ascending: true });
+
+            if (!isAllCampaigns) q = q.eq("campaign", camp);
+
+            const { data, error } = await q;
+            if (error){
+              chartStatus.textContent = `Error (${view}): ${error.message}`;
+              destroyChart();
+              return;
+            }
+
+            const rows = data || [];
+            if (!rows.length){
+              chartStatus.textContent = "Sin datos para ese operador/rango.";
+              destroyChart();
+              return;
+            }
+
+            chartTitle.textContent = `Ventas por Mes (${opCode})`;
+            const labels = rows.map(r => String(r.kpi_month).slice(0,7));
+            const values = rows.map(r => Number(r.ventas_total || 0));
+            makeChart(labels, values, { label: "Ventas" });
+            chartStatus.textContent = "OK.";
+            return;
+          }
+
+          if (mode === "daily"){
+            let view = isAllCampaigns ? "kpi_daily_operator_total" : "kpi_daily_operator_total_campaign";
+            let q = sb.from(view).select("kpi_date, ventas_total")
+              .eq("operator_code", opCode)
+              .gte("kpi_date", from).lte("kpi_date", to)
+              .order("kpi_date", { ascending: true });
+
+            if (!isAllCampaigns) q = q.eq("campaign", camp);
+
+            const { data, error } = await q;
+            if (error){
+              chartStatus.textContent = `Error (${view}): ${error.message}`;
+              destroyChart();
+              return;
+            }
+
+            const rows = data || [];
+            if (!rows.length){
+              chartStatus.textContent = "Sin datos para ese operador/rango.";
+              destroyChart();
+              return;
+            }
+
+            chartTitle.textContent = `Ventas por Día (${opCode})`;
+            const labels = rows.map(r => String(r.kpi_date));
+            const values = rows.map(r => Number(r.ventas_total || 0));
+            makeChart(labels, values, { label: "Ventas" });
+            chartStatus.textContent = "OK.";
+            return;
+          }
+        }
+
+        chartStatus.textContent = "Selecciona una combinación válida (Todos/Operador) para el modo elegido.";
       } finally {
         loadingChart = false;
         $("btnLoadChart").disabled = false;
@@ -948,7 +904,7 @@ async function loadCountries(){
         if (prof?.role === "supervisor"){
           supervisorZone.classList.remove("hide");
           await loadCountries();
-          operatorPickWrap.classList.toggle("hide", scopeSel.value !== "operator");
+          await loadOperatorsList();
         } else {
           supervisorZone.classList.add("hide");
         }
@@ -986,12 +942,10 @@ async function loadCountries(){
     periodSel.addEventListener("change", loadCampaigns);
     campaignSel.addEventListener("change", () => loadHistory7Days());
 
+    // supervisor filters
+    countryPick.addEventListener("change", loadOperatorsList);
     scopeSel.addEventListener("change", () => {
       operatorPickWrap.classList.toggle("hide", scopeSel.value !== "operator");
-    });
-
-    countryPick.addEventListener("change", async () => {
-      await loadOperatorsList();
     });
 
     $("btnLoadChart").addEventListener("click", loadSalesChart);
