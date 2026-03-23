@@ -400,6 +400,32 @@ async function loadCountries(){
       chartStatus.textContent = rows.length ? "Operadores cargados." : "Sin operadores para ese país (o RLS).";
     }
 
+    async function loadOperatorsListByCountry(country){
+  chartStatus.textContent = "Cargando operadores...";
+  let q = sb.from("operator_directory")
+    .select("operator_code, operator_name, country")
+    .eq("role","operator")
+    .eq("is_active", true)
+    .order("operator_name", { ascending: true });
+
+  if (country && country !== "__ALL__"){
+    q = q.eq("country", country);
+  }
+
+  const { data, error } = await q;
+  if (error){
+    chartStatus.textContent = "Error cargando operadores: " + error.message;
+    operatorPick.innerHTML = "";
+    return;
+  }
+
+  operatorPick.innerHTML = (data||[]).map(o =>
+    `<option value="${o.operator_code}">${o.operator_name} (${o.operator_code})</option>`
+  ).join("");
+
+  chartStatus.textContent = (data||[]).length ? "Operadores cargados." : "Sin operadores para ese país.";
+}
+
     // ===== Campaigns + KPIs =====
     async function loadCampaigns(){
       status.textContent = "Cargando campañas...";
