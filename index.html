@@ -354,20 +354,21 @@
       return (data && data.length) ? data[0] : null;
     }
 
-    async function loadCountries(){
-      chartStatus.textContent = "Cargando países...";
-      const { data, error } = await sb
-        .from("operators")
-        .select("country")
-        .not("country","is",null);
+async function loadCountries(){
+  const { data, error } = await sb
+    .from("operator_directory")
+    .select("country")
+    .eq("is_active", true);
 
-      if (error){
-        chartStatus.textContent = "Error cargando países: " + error.message;
-        return;
-      }
+  if (error){
+    chartStatus.textContent = "Error cargando países: " + error.message;
+    return;
+  }
 
-      const uniq = [...new Set((data||[]).map(x=>x.country).filter(Boolean))].sort();
-      countryPick.innerHTML = uniq.map(c => `<option value="${c}">${c}</option>`).join("");
+  const uniq = [...new Set((data||[]).map(x=>x.country).filter(Boolean))].sort();
+  countryPick.innerHTML = [`<option value="__ALL__">Todos</option>`]
+    .concat(uniq.map(c => `<option value="${c}">${c}</option>`))
+    .join("");
       chartStatus.textContent = uniq.length ? "Países cargados." : "No hay países.";
 
       // si ya hay país seleccionado, refresca lista operadores
